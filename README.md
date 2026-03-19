@@ -211,23 +211,37 @@ fpga_top_cX.sv              (조합별 Top-Level, 핀 매핑)
 
 ## Implementation Plan
 
-13개 SPEC으로 분해한 10단계 구현 계획:
+### v1: BRAM Only (외부 메모리 없음)
+
+핵심 구동 + 데이터 수집. 보정은 MCU/PC 소프트웨어에서 처리.
 
 | SPEC | Phase | Title |
 |------|-------|-------|
 | SPEC-FPD-001 | 1 | SPI Slave + Register Bank + Clock Manager |
 | SPEC-FPD-002 | 2 | Panel Control FSM (6-state, 5-mode) |
-| SPEC-FPD-003 | 3A | Gate NV1047 Driver + Row Scan Engine |
-| SPEC-FPD-004 | 3B | Gate NT39565D Driver (large panel) |
-| SPEC-FPD-005 | 4A | AFE AD711xx Controller (ACLK/SYNC) |
-| SPEC-FPD-006 | 4B | AFE2256 Controller (MCLK/CIC/SYNC) |
-| SPEC-FPD-007 | 5 | LVDS Data Receiver + Line Buffer |
+| SPEC-FPD-003 | 3 | Gate NV1047 Driver + Row Scan Engine |
+| SPEC-FPD-004 | 3 | Gate NT39565D Driver (large panel) |
+| SPEC-FPD-005 | 4 | AFE AD711xx Controller (ACLK/SYNC) |
+| SPEC-FPD-006 | 4 | AFE2256 Controller (MCLK/CIC/SYNC) |
+| SPEC-FPD-007 | 5 | LVDS Data Receiver + Line Buffer + MCU Output |
 | SPEC-FPD-008 | 6 | Power Sequencer + Emergency Shutdown |
-| SPEC-FPD-009 | 7 | Calibration Pipeline (Offset/Gain/Defect) |
-| SPEC-FPD-010 | 8 | Forward Bias + LTI Lag Correction |
-| SPEC-FPD-011 | 9 | Integration: fpga_top C1 (reference) |
-| SPEC-FPD-012 | 9 | Integration: fpga_top C6 (24-AFE) |
-| SPEC-FPD-013 | 10 | Radiography Static Mode Extension |
+| SPEC-FPD-009 | 7 | Integration: fpga_top C1/C3/C6 |
+| SPEC-FPD-010 | 8 | Radiography Static Mode Extension |
+
+### v2: 외부 메모리 확장 (v1 완료 후)
+
+외부 SRAM/DDR 추가, FPGA 내 실시간 보정 파이프라인 구현.
+
+| SPEC | Title |
+|------|-------|
+| SPEC-FPD-011 | External Memory Interface (SRAM/DDR) |
+| SPEC-FPD-012 | Offset Subtraction Pipeline |
+| SPEC-FPD-013 | Gain Multiplication Pipeline |
+| SPEC-FPD-014 | Defect Pixel Replacement |
+| SPEC-FPD-015 | LTI Lag Correction |
+| SPEC-FPD-016 | Forward Bias Control |
+| SPEC-FPD-017 | Frame Buffer + Multi-frame Averaging |
+| SPEC-FPD-018 | v2 Integration & Calibration Validation |
 
 상세 계획: [`.moai/project/implementation-plan.md`](.moai/project/implementation-plan.md)
 

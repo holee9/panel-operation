@@ -74,14 +74,28 @@ Register access via MCU SPI (addresses 0x00–0x1F). Critical registers:
 - `docs/research/` — Component physics research (TFT, Gate IC, AFE, lag correction, calibration)
 - `docs/datasheet/` — IC datasheets (AD71124, AD71143, AFE2256, NV1047, NT39565D, panel specs)
 
+### Target FPGA & Toolchain
+
+- **Device**: xc7a35tfgg484-1 (Xilinx Artix-7 35T, FGG484 package, speed grade -1)
+- **Toolchain**: Vivado 2025.2
+- **Resources**: ~33,280 logic cells, 90 DSP48E1, 50 BRAM36K (1,800Kb), 250 I/O (FGG484), 5 MMCM
+- **AFE support**: Up to 24 AFE chips (confirmed working system)
+- **LVDS per AFE**: 3 differential pairs (6 pins) — DOUT ×2 + DCLK. 24 AFE = 72 pairs = 144 pins (fits in 250 I/O)
+- **Architecture**: All AFE LVDS outputs connect directly to FPGA — no external MUX. Broadcast SYNC/ACLK/MCLK with SPI daisy-chain.
+- **Primitives**: ISERDESE2, IDELAYE2, IBUFDS, MMCME2_ADV (Artix-7 series)
+
 ### RTL Development Notes
 
 When writing SystemVerilog RTL for this project:
 - Use `fpga-rtl-design` skill for FSM generation, CDC analysis, timing constraints
+- Target device: xc7a35tfgg484-1 — always use this part number in Vivado project creation and constraints
 - Check `docs/fpga-design/fpga_module_architecture.md` Section 4 for detailed port specs before implementing any module
 - AD71124 and AD71143 share the same `afe_ad711xx` module via generic parameters (IFS bit-width differs)
 - NT39565D requires dual STV pulse generation and OE1/OE2 split-channel control (unlike NV1047's single OE)
 - LVDS receive format differs: ADI uses DCLKH/DCLKL with DOUT A/B pairs; TI (AFE2256) uses DCLK_P/M + FCLK_P/M
+- **v1 (current)**: BRAM only, no external memory — core control + data acquisition, calibration done in MCU/PC software
+- **v2 (future)**: External SRAM/DDR added — FPGA-internal calibration pipeline (offset/gain/defect/lag)
+- 24-AFE LVDS outputs connect directly to FPGA — each AFE has dedicated LVDS receiver instance (no external MUX)
 
 ---
 
