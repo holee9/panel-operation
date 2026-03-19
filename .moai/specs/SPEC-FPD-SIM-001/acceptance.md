@@ -180,6 +180,54 @@
 
 ---
 
+## AC-SIM-023: Radiography 30s X_RAY_READY Timeout (SPEC-FPD-010)
+
+**Given** RadiogModel이 radiography sub-FSM의 S4_XRAY_READY_WAIT 상태에 있는 상태에서
+**When** X_RAY_READY 신호가 30초 동안 수신되지 않으면
+**Then** FSM이 ERROR 상태로 전이하고 ERR_XRAY_TIMEOUT이 설정되어야 하며, 이 타임아웃은 SPEC-002의 일반 5초 타임아웃과 독립적으로 radiography 모드 전용 30초로 동작해야 한다
+
+---
+
+## AC-SIM-024: Dark Frame 64-Frame Acquisition (SPEC-FPD-010)
+
+**Given** RadiogModel이 DARK_FRAME 모드 (REG_MODE=011)로 설정된 상태에서
+**When** 다크 프레임 연속 획득이 실행되면
+**Then** Gate OFF를 유지한 채 AFE 리드아웃만 64회 연속 실행되어야 하며, 64 프레임 완료 후 정상 종료되어야 한다
+
+---
+
+## AC-SIM-025: CONTINUOUS Mode Auto-Repeat (SPEC-FPD-002)
+
+**Given** PanelFsmModel이 REG_MODE=001 (CONTINUOUS)로 설정되고 START가 발생한 상태에서
+**When** 첫 번째 프레임이 DONE 상태에 도달하면
+**Then** ABORT 없이 자동으로 RESET 상태로 전이하여 다음 프레임을 시작해야 하며, 3회 이상 연속 반복이 검증되어야 한다
+
+---
+
+## AC-SIM-026: AFE2256 tLINE Boundary (SPEC-FPD-006)
+
+**Given** AfeAfe2256Model이 MCLK=32 MHz로 구성된 상태에서
+**When** tLINE=5120 (51.2 us, 최소값)으로 SYNC가 적용되면
+**Then** 256채널 16비트 출력이 51.2 us 이내에 완료되어야 하며, tLINE < 5120 설정 시 에러가 감지되어야 한다
+
+---
+
+## AC-SIM-027: GoldenModelBase Interface Contract (Infrastructure)
+
+**Given** GoldenModelBase를 상속한 임의의 골든 모델이 인스턴스화된 상태에서
+**When** reset() → set_inputs() → step() → get_outputs() → compare() 시퀀스가 호출되면
+**Then** 각 메서드가 정의된 계약에 따라 동작해야 하며, compare()는 불일치 시 Mismatch 리스트를 반환하고, cycle()은 step() 호출마다 1씩 증가해야 한다
+
+---
+
+## AC-SIM-028: Test Vector Dual-Format Output (Infrastructure)
+
+**Given** 임의의 테스트 벡터 생성기가 실행된 상태에서
+**When** generate_vectors()가 출력 디렉토리를 지정받으면
+**Then** hex 형식 (.hex, cocotb용)과 binary 형식 (.bin, Verilator용) 파일이 모두 생성되어야 하며, 각 파일에 @MODULE, @SPEC, @SIGNALS_IN, @SIGNALS_OUT 메타데이터가 포함되어야 한다
+
+---
+
 ## Edge Case Scenarios
 
 ### EC-SIM-001: SPI Contention
@@ -219,16 +267,18 @@
 | SPEC | Golden Model AC | cocotb AC | Verilator AC | Total |
 |------|----------------|-----------|--------------|-------|
 | SPEC-FPD-001 | AC-SIM-001 | AC-SIM-017 | - | 2 |
-| SPEC-FPD-002 | AC-SIM-002, 003 | - | - | 2 |
+| SPEC-FPD-002 | AC-SIM-002, 003, **025** | - | - | 3 |
 | SPEC-FPD-003 | AC-SIM-004, 005 | - | - | 2 |
 | SPEC-FPD-004 | AC-SIM-022 | - | - | 1 |
 | SPEC-FPD-005 | AC-SIM-006, 007 | - | - | 2 |
-| SPEC-FPD-006 | AC-SIM-008 | - | - | 1 |
+| SPEC-FPD-006 | AC-SIM-008, **026** | - | - | 2 |
 | SPEC-FPD-007 | AC-SIM-009~014 | AC-SIM-011, 012 | AC-SIM-018 | 9 |
 | SPEC-FPD-007+009 | AC-SIM-021 | - | - | 1 |
 | SPEC-FPD-008 | AC-SIM-015, 016 | - | - | 2 |
+| SPEC-FPD-010 | **AC-SIM-023, 024** | - | - | 2 |
 | Build/CI | - | - | AC-SIM-019, 020 | 2 |
-| **Total** | **16** | **3** | **3** | **22** |
+| Infrastructure | **AC-SIM-027, 028** | - | - | 2 |
+| **Total** | **22** | **3** | **3** | **28** |
 
 ---
 

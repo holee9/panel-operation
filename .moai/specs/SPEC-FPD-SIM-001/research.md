@@ -44,13 +44,17 @@
 // GoldenModelBase — 모든 골든 모델의 추상 기반 클래스
 class GoldenModelBase {
 public:
-    virtual void reset() = 0;           // POR 상태로 초기화
-    virtual void step() = 0;            // 1 클럭 사이클 진행
-    virtual bool compare(const GoldenModelBase& rtl) const = 0;  // RTL 비교
-    uint64_t cycle_count() const;
+    virtual ~GoldenModelBase() = default;
+    virtual void reset() = 0;                        // POR 상태로 초기화
+    virtual void step() = 0;                         // 1 클럭 사이클 진행
+    virtual void set_inputs(const std::map<std::string, uint32_t>& inputs) = 0;
+    virtual std::map<std::string, uint32_t> get_outputs() const = 0;
+    virtual std::vector<Mismatch> compare(           // RTL 출력과 비교
+        const std::map<std::string, uint32_t>& rtl_outputs) const = 0;
+    virtual void generate_vectors(const std::string& output_dir) = 0;
+    uint64_t cycle() const { return cycle_count_; }
 protected:
-    void log_divergence(const std::string& signal, uint64_t expected, uint64_t actual);
-    uint64_t m_cycle = 0;
+    uint64_t cycle_count_ = 0;
 };
 
 // SignalTypes — RTL 비트 폭과 정확히 일치하는 타입

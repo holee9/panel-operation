@@ -95,7 +95,7 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 
 **R-SIM-023 (Ubiquitous):** 테스트 벡터는 경계 조건을 포함해야 한다: 최소 tLINE (AD71124=2200, AD71143=6000), 최대 행 수 (3072), 최소/최대 SPI 클럭 (1/10 MHz) (SHALL).
 
-**R-SIM-024 (Ubiquitous):** 테스트 벡터는 에러 주입 케이스를 포함해야 한다: X_RAY_READY 타임아웃 (5초), VGH 과전압 (>38V), PLL unlock, AFE FIFO overflow (SHALL).
+**R-SIM-024 (Ubiquitous):** 테스트 벡터는 에러 주입 케이스를 포함해야 한다: X_RAY_READY 타임아웃 (SPEC-002 기본 5초; SPEC-010 radiography 모드 30초 — X-ray 제너레이터 HV 충전 대기), VGH 과전압 (>38V), PLL unlock, AFE FIFO overflow (SHALL).
 
 **R-SIM-025 (Ubiquitous):** 테스트 벡터 파일은 sim/golden_models/test_vectors/에 hex 형식 (cocotb용)과 binary 형식 (Verilator용) 모두로 생성되어야 한다 (SHALL).
 
@@ -124,6 +124,18 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 **R-SIM-034 (Ubiquitous):** 빌드 시스템은 Windows (MSVC 2022) 및 Linux (GCC >= 11, Clang >= 14)에서 플랫폼 특화 코드 변경 없이 컴파일을 지원해야 한다 (SHALL).
 
 **R-SIM-035 (Event-Driven):** Verilator 시뮬레이션이 골든 모델과 RTL 간 불일치를 감지할 때, 빌드는 non-zero 반환 코드로 종료하여 CI/CD 파이프라인을 실패시켜야 한다 (SHALL).
+
+**R-SIM-036 (Ubiquitous):** C++ 골든 모델 소스 코드의 라인 커버리지는 90%를 초과해야 한다 (SHALL). 측정 도구: gcov (GCC) 또는 llvm-cov (Clang).
+
+### Non-Functional Requirements
+
+**NFR-SIM-001 (Regulatory):** 검증 방법론은 IEC 62220-1 준수 문서화를 지원해야 한다 (SHALL). 테스트 커버리지 보고서는 수용기준 ID (AC-001-x ~ AC-010-x)로 추적 가능해야 한다.
+
+**NFR-SIM-002 (Performance):** 전체 프레임 Verilator 시뮬레이션은 2048x2048에서 60초, 3072x3072에서 120초 이내에 완료되어야 한다 (SHALL).
+
+**NFR-SIM-003 (Performance):** cocotb 테스트 스위트는 단일 SPEC 모듈당 30분 이내에 완료되어야 한다 (SHALL).
+
+**NFR-SIM-004 (Portability):** 골든 모델은 Windows (MSVC 2022, /std:c++17)와 Linux (GCC >= 11, -std=c++17) 양 플랫폼에서 플랫폼 특화 코드 없이 빌드되어야 한다 (SHALL).
 
 ---
 
@@ -208,7 +220,7 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 - Verilator >= 5.x (open-source)
 - cocotb >= 1.8 (BSD license)
 - Vivado 2025.2 (xsim backend)
-- Google Test 또는 Catch2 (C++ unit test)
+- GoogleTest (C++ unit test)
 
 ### 후행 의존성
 - 각 SPEC-FPD-00x의 RTL 구현 시 대응 골든 모델이 먼저 완료되어야 함

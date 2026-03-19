@@ -41,6 +41,8 @@ sim/
 │   │   ├── LineBufModel.h/cpp        SPEC-007: Ping-pong BRAM line buffer
 │   │   ├── Csi2PacketModel.h/cpp     SPEC-007: CSI-2 packet builder
 │   │   ├── Csi2LaneDistModel.h/cpp   SPEC-007: 2/4-lane byte distributor
+│   │   ├── DataOutMuxModel.h/cpp      SPEC-007: Multi-AFE data alignment
+│   │   ├── McuDataIfModel.h/cpp      SPEC-007: MCU parallel data + IRQ (legacy)
 │   │   ├── ProtMonModel.h/cpp        SPEC-008: Protection monitor
 │   │   ├── EmergShutdownModel.h/cpp  SPEC-008: Emergency shutdown
 │   │   ├── PowerSeqModel.h/cpp       SPEC-008: Power sequencer (VGL→VGH)
@@ -389,6 +391,8 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 | 2.4 | PowerSeqModel (VGL→VGH) | test_safety.py (확장) | 1일 |
 
 ### Phase 3: Gate IC (SPEC-003 + 004)
+
+> **Note**: SIM 구현 순서는 모듈 유형별 그룹핑 (Gate IC끼리, AFE끼리). RTL 구현 순서 (implementation-plan.md)는 하드웨어 조합별 (NV1047+AD711xx → NT39565D+AFE2256). 두 순서 모두 의존성을 충족하며, SIM은 재사용 극대화를 위해 유형별 그룹핑을 채택.
 
 | Step | Golden Model | cocotb Test | Duration |
 |------|-------------|-------------|----------|

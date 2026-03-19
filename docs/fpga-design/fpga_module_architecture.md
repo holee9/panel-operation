@@ -215,7 +215,7 @@ C7     X239AW1-102     NT39565D    AFE2256×N   대형 43×43 고화질
   5. reset_all=1: ONA=0 (전체 VGG 강제)
 
 타이밍 파라미터 (레지스터):
-  T_clk_period   : CLK 주기 (기본 5ns, 최소 5ns = 200kHz)
+  T_clk_period   : CLK 주기 (기본 5us, 최소 5us = 200kHz)
   T_gate_on      : OE=0 유지 시간 (단위: clk)
   T_gate_settle  : CLK stop → Gate 안정화 대기 (단위: clk)
 ```

@@ -468,7 +468,7 @@ rtl/
 │   └── emergency_shutdown.sv      Over-voltage/temp/PLL detection
 │
 ├── panel/                         Panel driving control
-│   ├── panel_ctrl_fsm.sv          Main FSM (6 states, 5 modes)
+│   ├── panel_ctrl_fsm.sv          Main FSM (7 states + ERROR, 5 modes)
 │   ├── panel_reset_ctrl.sv        Reset sequence + dummy scans
 │   └── panel_integ_ctrl.sv        Integration timing + X-ray handshake
 │
