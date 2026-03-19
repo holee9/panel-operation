@@ -177,36 +177,59 @@ MCU ◀──Data── FPGA ◀──LVDS (3 pairs/AFE × 24 = 72 pairs)── 
 
 ## FPGA Module Hierarchy
 
-### v1 Modules (BRAM only, 외부 메모리 없음)
+### v1 RTL Directory Structure (BRAM only)
 
 ```
-fpga_top_cX.sv              (조합별 Top-Level, 핀 매핑)
-├── spi_slave_if.sv          MCU SPI 슬레이브
-├── clk_rst_mgr.sv           클럭 분배 (ACLK/MCLK) + 리셋 동기화
-├── reg_bank.sv              32-레지스터 파일 (0x00-0x1F)
-├── panel_ctrl_fsm.sv        메인 구동 FSM (6 states, 5 modes)
-│   ├── gate_ic_driver       [NV1047 | NT39565D]
-│   │   └── row_scan_eng.sv  행 스캔 카운터
-│   ├── afe_ctrl_if          [AD711xx | AFE2256]
-│   │   └── line_data_rx.sv  LVDS 수신 (per AFE, direct)
-│   │       └── line_buf_ram.sv  BRAM 라인 버퍼
-│   └── prot_mon.sv          과노출 보호
-├── power_sequencer.sv       전원 모드 M0-M5
-├── emergency_shutdown.sv    비상 정지
-├── data_out_mux.sv          데이터 출력 정렬
-└── mcu_data_if.sv           MCU 데이터 전송
+rtl/
+├── packages/                      Global definitions
+│   ├── fpd_types_pkg.sv           FSM states, enums, type definitions
+│   └── fpd_params_pkg.sv          Configurable system parameters
+│
+├── common/                        Shared FPGA infrastructure
+│   ├── spi_slave_if.sv            MCU SPI slave (register R/W)
+│   ├── clk_rst_mgr.sv            Clock generation (MMCM) + reset sync
+│   ├── reg_bank.sv                32-register file (0x00-0x1F)
+│   ├── data_out_mux.sv            Line data → MCU bus alignment
+│   ├── mcu_data_if.sv             MCU data transfer + IRQ
+│   ├── prot_mon.sv                Over-exposure timeout, error flags
+│   ├── power_sequencer.sv         Power mode M0-M5, VGL-before-VGH
+│   └── emergency_shutdown.sv      Over-voltage/temp/PLL detection
+│
+├── panel/                         Panel driving control
+│   ├── panel_ctrl_fsm.sv          Main FSM (6 states, 5 modes)
+│   ├── panel_reset_ctrl.sv        Reset sequence + dummy scans
+│   └── panel_integ_ctrl.sv        Integration timing + X-ray handshake
+│
+├── gate/                          Gate IC drivers
+│   ├── gate_nv1047.sv             NV1047 driver (C1-C5): SD/CLK/OE
+│   ├── gate_nt39565d.sv           NT39565D driver (C6-C7): dual STV/CPV
+│   └── row_scan_eng.sv            Row counter + Gate ON/OFF timing
+│
+├── roic/                          AFE/ROIC controllers
+│   ├── afe_ad711xx.sv             AD71124/AD71143 (ACLK, SYNC, SPI)
+│   ├── afe_afe2256.sv             AFE2256 (MCLK, CIC, TP_SEL)
+│   ├── afe_spi_master.sv          SPI master (daisy-chain, max 24 AFE)
+│   ├── line_data_rx.sv            LVDS receiver (per AFE, ISERDESE2)
+│   └── line_buf_ram.sv            BRAM ping-pong line buffer
+│
+└── top/                           Top-level per combination
+    └── fpga_top_c1.sv             C1: NV1047 + AD71124 (reference)
 ```
 
-### v2 추가 Modules (외부 메모리 확장)
+### v2 추가 Modules (외부 메모리 확장, 별도 구현)
 
 ```
-├── ext_mem_if.sv            외부 SRAM/DDR 인터페이스
-├── offset_subtractor.sv     오프셋 감산 (ext mem)
-├── gain_multiplier.sv       게인 정규화 (ext mem)
-├── defect_replacer.sv       결함 화소 보간 (BRAM 2-line)
-├── lag_corrector_lti.sv     LTI 래그 보정 (ext mem state)
-├── forward_bias_ctrl.sv     Forward Bias 제어
-└── frame_buffer_ctrl.sv     프레임 버퍼 관리
+rtl/
+├── extmem/                        External memory interface
+│   ├── ext_mem_if.sv              SRAM/DDR MIG interface
+│   └── frame_buffer_ctrl.sv       Frame buffer management
+│
+└── calibration/                   Real-time correction pipeline
+    ├── offset_subtractor.sv       Offset subtraction (ext mem)
+    ├── gain_multiplier.sv         Gain normalization (ext mem)
+    ├── defect_replacer.sv         Defect pixel interpolation
+    ├── lag_corrector_lti.sv       LTI lag correction (ext mem state)
+    └── forward_bias_ctrl.sv       Forward bias control
 ```
 
 ---
