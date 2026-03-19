@@ -96,10 +96,10 @@ flowchart TB
     COL ==>|"Analog\nCharge"| AFE_SIDE
     F2 ==>|"SPI Daisy-Chain\nSYNC, ACLK/MCLK\n(Broadcast)"| AFE_SIDE
 
-    A1 -->|"LVDS Direct"| F3
-    A2 -->|"LVDS Direct"| F3
-    A3 -->|"LVDS Direct"| F3
-    A24 -->|"LVDS Direct"| F3
+    A1 -->|"3 LVDS pairs\n(6 pins)"| F3
+    A2 -->|"3 pairs"| F3
+    A3 -->|"3 pairs"| F3
+    A24 -->|"3 pairs"| F3
 ```
 
 ### 데이터 수집 시퀀스 (1 Row)
@@ -134,7 +134,7 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
                                                             │
                                                      Charge Signal
                                                             ▼
-MCU ◀──Data── FPGA ◀──LVDS Direct── AFE #1~#24 ◀──── Panel (Column Out)
+MCU ◀──Data── FPGA ◀──LVDS (3 pairs/AFE × 24 = 72 pairs)── AFE ◀── Panel (Column Out)
                 │                      ▲
                 │                      │
                 └──SPI/SYNC/ACLK───────┘  (Broadcast to all AFEs)
