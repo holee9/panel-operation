@@ -13,197 +13,149 @@ a-Si TFT 기반 X-ray Flat Panel Detector의 FPGA 구동 제어 시스템.
 ### 전체 시스템 블록도
 
 ```mermaid
-graph TB
-    subgraph HOST["Host PC / Detector SDK"]
-        PC[Image Processing<br/>NLCSC Lag Correction]
+flowchart LR
+    GEN["X-ray\nGenerator"]
+    MCU["MCU\n(SPI Master)"]
+    PC["Host PC"]
+
+    subgraph FPGA["FPGA  ·  xc7a35tfgg484-1"]
+        direction TB
+        A1["SPI Slave\n+ Register Bank"]
+        A2["Clock Manager\n(ACLK/MCLK)"]
+        A3["Panel Control\nFSM"]
+        A4["Gate IC\nDriver"]
+        A5["AFE Control\n+ SPI Config"]
+        A6["LVDS RX\n+ MUX Select"]
+        A7["Line Buffer\n(BRAM)"]
+        A8["Calibration\nPipeline"]
+        A9["Data Output\nto MCU"]
+        A10["Safety\nMonitor"]
+
+        A1 --> A3
+        A2 --> A3
+        A3 --> A4
+        A3 --> A5
+        A5 --> A6
+        A6 --> A7
+        A7 --> A8
+        A8 --> A9
+        A3 --> A10
     end
 
-    subgraph MCU_BLOCK["MCU"]
-        MCU[MCU Controller<br/>SPI Master]
+    subgraph DETECTOR["Detector Module"]
+        GATE["Gate IC\nNV1047 / NT39565D"]
+        PANEL["a-Si TFT\nPanel"]
+        AFE["AFE/ROIC\n(max 24 chips)"]
+        LVDSMUX["LVDS\nMUX"]
+
+        GATE -->|"Row Scan\n(VGG/VEE)"| PANEL
+        PANEL -->|"Charge\nSignal"| AFE
+        AFE --> LVDSMUX
     end
 
-    subgraph FPGA_BLOCK["FPGA — xc7a35tfgg484-1<br/>Artix-7 35T"]
-        SPI_IF[spi_slave_if]
-        REG[reg_bank<br/>32 Registers]
-        CLK[clk_rst_mgr<br/>ACLK / MCLK / DCLK]
-        FSM[panel_ctrl_fsm<br/>6-State FSM]
-        GATE_DRV[gate_ic_driver<br/>NV1047 / NT39565D]
-        AFE_CTRL[afe_ctrl_if<br/>AD711xx / AFE2256]
-        ROW[row_scan_eng]
-        LVDS_RX[line_data_rx<br/>LVDS Receiver]
-        BUF[line_buf_ram<br/>BRAM Line Buffer]
-        CAL[Calibration Pipeline<br/>Offset → Gain → Defect]
-        PROT[prot_mon<br/>Safety Monitor]
-        PWR[power_sequencer]
-        MUX[data_out_mux]
-        DATA_IF[mcu_data_if]
-
-        SPI_IF --> REG
-        REG --> FSM
-        CLK --> FSM
-        FSM --> GATE_DRV
-        FSM --> AFE_CTRL
-        GATE_DRV --> ROW
-        AFE_CTRL --> LVDS_RX
-        LVDS_RX --> BUF
-        BUF --> CAL
-        CAL --> MUX
-        MUX --> DATA_IF
-        FSM --> PROT
-        REG --> PWR
-    end
-
-    subgraph PANEL_BLOCK["X-ray Detector Panel"]
-        subgraph GATE_IC["Gate IC Array"]
-            NV[NV1047<br/>300ch × N]
-            NT[NT39565D<br/>541ch × N]
-        end
-
-        PANEL[a-Si TFT Panel<br/>R1717 / R1714 / X239AW1-102]
-
-        subgraph AFE_ARRAY["AFE/ROIC Array (최대 24 chips)"]
-            AFE1[AFE #1<br/>256ch]
-            AFE2[AFE #2<br/>256ch]
-            AFEN[AFE #N<br/>256ch]
-        end
-    end
-
-    subgraph XRAY["X-ray Generator"]
-        GEN[Generator<br/>PREP / ENABLE / ON / OFF]
-    end
-
-    MCU <-->|SPI 1-10MHz| SPI_IF
-    DATA_IF -->|Frame Data| MCU
-    MCU <-->|USB / Ethernet| PC
-
-    GATE_DRV -->|SD/CLK/OE<br/>STV/CPV| GATE_IC
-    GATE_IC -->|Gate Lines<br/>VGG/VEE| PANEL
-    PANEL -->|Charge Signal| AFE_ARRAY
-
-    AFE_CTRL -->|SPI Config<br/>SYNC / ACLK| AFE_ARRAY
-    AFE_ARRAY -->|LVDS Data<br/>Sequential MUX| LVDS_RX
-
-    GEN <-->|TTL GPIO| FSM
-
-    style FPGA_BLOCK fill:#1a1a2e,stroke:#e94560,color:#fff
-    style PANEL_BLOCK fill:#0f3460,stroke:#16213e,color:#fff
-    style HOST fill:#533483,stroke:#2b2d42,color:#fff
-    style MCU_BLOCK fill:#1b4332,stroke:#2d6a4f,color:#fff
-    style XRAY fill:#6b2737,stroke:#a4303f,color:#fff
+    MCU <-->|"SPI\n1-10 MHz"| A1
+    A9 -->|"Frame\nData"| MCU
+    MCU <-->|"USB/ETH"| PC
+    GEN <-->|"TTL\nGPIO"| A3
+    A4 -->|"SD/CLK/OE\nSTV/CPV"| GATE
+    A5 -->|"SPI Chain\nSYNC/ACLK"| AFE
+    LVDSMUX -->|"LVDS\n(Sequential)"| A6
 ```
 
-### Panel ↔ Gate IC ↔ ROIC ↔ FPGA 상세 구조도
+### Panel - Gate IC - ROIC - FPGA 연결 구조
 
 ```mermaid
-graph LR
-    subgraph FPGA["FPGA (Artix-7 35T)"]
-        direction TB
-        CTRL["panel_ctrl_fsm<br/>──────────<br/>FSM States:<br/>INIT → IDLE →<br/>CALIBRATE →<br/>ACQUIRE → DONE"]
-
-        G_DRV["gate_ic_driver"]
-        A_CTRL["afe_ctrl_if"]
-        SPI_M["SPI Master<br/>(AFE Config)"]
-        LRXM["line_data_rx<br/>+ LVDS MUX Select"]
-
-        CTRL --> G_DRV
-        CTRL --> A_CTRL
-        A_CTRL --> SPI_M
-        A_CTRL --> LRXM
+flowchart TB
+    subgraph FPGA_SIDE[" FPGA "]
+        F1["gate_ic_driver\n(SD, CLK, OE)"]
+        F2["afe_ctrl_if\n(SPI, SYNC, ACLK)"]
+        F3["line_data_rx\n(LVDS Receiver)"]
+        F4["MUX Select\n(5-bit)"]
     end
 
-    subgraph GATE["Gate IC"]
-        direction TB
-        G1["NV1047 #1"]
-        G2["NV1047 #2"]
-        GN["NV1047 #N"]
-        G1 ---|Cascade| G2
-        G2 ---|Cascade| GN
+    subgraph GATE_SIDE[" Gate IC  ×N "]
+        G1["Gate IC #1"]
+        G2["Gate IC #2"]
+        G3["Gate IC #N"]
+        G1 -->|Cascade| G2 -->|Cascade| G3
     end
 
-    subgraph PANEL["a-Si TFT Panel"]
-        direction TB
-        ROW["Gate Lines<br/>(Row Select)<br/>VGG +20~35V<br/>VEE -10~15V"]
-        PIX["Pixel Array<br/>2048×2048<br/>or 3072×3072"]
-        COL["Data Lines<br/>(Column Readout)<br/>Charge → Voltage"]
-        ROW --> PIX
-        PIX --> COL
+    subgraph PANEL_SIDE[" a-Si TFT Panel "]
+        ROW["Gate Lines\n(Row Select)"]
+        PIXEL["Pixel Array\n2048×2048\nor 3072×3072"]
+        COL["Data Lines\n(Column Out)"]
+        ROW --- PIXEL --- COL
     end
 
-    subgraph ROIC["AFE / ROIC Array"]
-        direction TB
-
-        subgraph MUX_CTRL["LVDS MUX<br/>(External)"]
-            EMUX["24:1 MUX<br/>Select Lines"]
-        end
-
-        subgraph AFE_CHIPS["24 AFE Chips"]
-            A1["AFE #1<br/>AD71124<br/>256ch 16bit"]
-            A2["AFE #2<br/>256ch"]
-            A3["AFE #3<br/>256ch"]
-            AN["AFE #24<br/>256ch"]
-        end
-
-        A1 --> EMUX
-        A2 --> EMUX
-        A3 --> EMUX
-        AN --> EMUX
+    subgraph AFE_SIDE[" AFE/ROIC  ×24 "]
+        A1["AFE #1\n256ch"]
+        A2["AFE #2\n256ch"]
+        A3["..."]
+        A24["AFE #24\n256ch"]
     end
 
-    G_DRV -->|"SD1/SD2, CLK<br/>OE, ONA, L/R"| GATE
-    GATE -->|"Gate ON/OFF<br/>(Row Scan)"| ROW
+    MUX["External\nLVDS MUX\n(24:1)"]
 
-    COL -->|"Analog Charge<br/>Signal"| AFE_CHIPS
+    F1 ==>|"SD1/SD2, CLK\nOE, L/R"| GATE_SIDE
+    GATE_SIDE ==>|"VGG/VEE\nRow ON/OFF"| ROW
+    COL ==>|"Analog\nCharge"| AFE_SIDE
+    F2 ==>|"SPI Daisy-Chain\nSYNC, ACLK/MCLK\n(Broadcast)"| AFE_SIDE
 
-    SPI_M -->|"SPI Daisy-Chain<br/>(SCK/SDI/SDO/CS)"| AFE_CHIPS
-    A_CTRL -->|"Broadcast<br/>SYNC + ACLK/MCLK"| AFE_CHIPS
-    EMUX -->|"LVDS Data<br/>(1 AFE at a time)"| LRXM
-    FPGA -->|"MUX Select<br/>(5-bit)"| MUX_CTRL
-
-    style FPGA fill:#1a1a2e,stroke:#e94560,color:#fff
-    style PANEL fill:#16213e,stroke:#0f3460,color:#fff
-    style GATE fill:#1b4332,stroke:#2d6a4f,color:#fff
-    style ROIC fill:#533483,stroke:#7b2cbf,color:#fff
+    A1 -->|LVDS| MUX
+    A2 -->|LVDS| MUX
+    A3 -->|LVDS| MUX
+    A24 -->|LVDS| MUX
+    F4 -.->|Select| MUX
+    MUX ==>|"LVDS Data\n(1 AFE at a time)"| F3
 ```
 
 ### 24-AFE 순차 리드아웃 시퀀스
 
 ```mermaid
 sequenceDiagram
-    participant FPGA
-    participant SYNC as SYNC (Broadcast)
-    participant AFE1 as AFE #1
-    participant AFE2 as AFE #2
-    participant AFEN as AFE #24
-    participant MUX as LVDS MUX
-    participant RX as FPGA LVDS RX
+    participant F as FPGA
+    participant A as All 24 AFEs
+    participant M as LVDS MUX
+    participant R as LVDS RX
 
-    Note over FPGA,AFEN: Row N Readout Sequence
+    Note over F,A: Row N Readout
 
-    FPGA->>SYNC: Assert SYNC (all AFEs start conversion)
-    SYNC-->>AFE1: SYNC pulse
-    SYNC-->>AFE2: SYNC pulse
-    SYNC-->>AFEN: SYNC pulse
+    F ->> A: SYNC broadcast (all AFEs convert)
 
-    Note over AFE1,AFEN: All AFEs convert simultaneously
+    rect rgb(230, 245, 255)
+        F ->> M: Select AFE #1
+        M ->> R: LVDS data (256ch)
+        R ->> F: Store to buffer
+    end
 
-    FPGA->>MUX: Select AFE #1
-    AFE1->>MUX: LVDS Data (256ch × 16bit)
-    MUX->>RX: Route to FPGA
-    RX->>FPGA: Store in line_buf_ram
+    rect rgb(240, 255, 240)
+        F ->> M: Select AFE #2
+        M ->> R: LVDS data (256ch)
+        R ->> F: Store to buffer
+    end
 
-    FPGA->>MUX: Select AFE #2
-    AFE2->>MUX: LVDS Data (256ch × 16bit)
-    MUX->>RX: Route to FPGA
-    RX->>FPGA: Store in line_buf_ram
+    Note over F,M: ... AFE #3 ~ #23 ...
 
-    Note over FPGA,MUX: ... repeat for AFE #3 ~ #23 ...
+    rect rgb(255, 245, 230)
+        F ->> M: Select AFE #24
+        M ->> R: LVDS data (256ch)
+        R ->> F: Store to buffer
+    end
 
-    FPGA->>MUX: Select AFE #24
-    AFEN->>MUX: LVDS Data (256ch × 16bit)
-    MUX->>RX: Route to FPGA
-    RX->>FPGA: Store in line_buf_ram
+    Note over F: Row N complete
+```
 
-    Note over FPGA: Row N complete → next row
+### 신호 흐름 요약
+
+```
+MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──▶ Panel (Row Select)
+                                                            │
+                                                     Charge Signal
+                                                            ▼
+MCU ◀──Data── FPGA ◀──LVDS MUX◀── AFE #1~#24 ◀──────── Panel (Column Out)
+                │                      ▲
+                │                      │
+                └──SPI/SYNC/ACLK───────┘  (Broadcast to all AFEs)
 ```
 
 ---
@@ -235,7 +187,7 @@ sequenceDiagram
 | BRAM36K | 50 (1,800 Kb) |
 | I/O Pins | 250 |
 | MMCM | 5 |
-| AFE 지원 | 최대 24 chips (순차 리드아웃) |
+| AFE Support | Max 24 chips (sequential readout) |
 | Toolchain | Vivado 2025.2 |
 
 ---
