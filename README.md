@@ -169,12 +169,15 @@ MCU ◀──Data── FPGA ◀──LVDS (3 pairs/AFE × 24 = 72 pairs)── 
 | BRAM36K | 50 (1,800 Kb) |
 | I/O Pins | 250 |
 | MMCM | 5 |
-| AFE Support | Max 24 chips |
+| AFE Support | Max 24 chips (direct LVDS, 3 pairs/AFE = 6 pins) |
+| LVDS (24 AFE) | 72 diff pairs = 144 pins (of 250 available) |
 | Toolchain | Vivado 2025.2 |
 
 ---
 
 ## FPGA Module Hierarchy
+
+### v1 Modules (BRAM only, 외부 메모리 없음)
 
 ```
 fpga_top_cX.sv              (조합별 Top-Level, 핀 매핑)
@@ -185,14 +188,25 @@ fpga_top_cX.sv              (조합별 Top-Level, 핀 매핑)
 │   ├── gate_ic_driver       [NV1047 | NT39565D]
 │   │   └── row_scan_eng.sv  행 스캔 카운터
 │   ├── afe_ctrl_if          [AD711xx | AFE2256]
-│   │   └── line_data_rx.sv  LVDS 수신 (per AFE, direct connection)
+│   │   └── line_data_rx.sv  LVDS 수신 (per AFE, direct)
 │   │       └── line_buf_ram.sv  BRAM 라인 버퍼
 │   └── prot_mon.sv          과노출 보호
-├── calibration_pipeline     오프셋 → 게인 → 결함 보정
 ├── power_sequencer.sv       전원 모드 M0-M5
 ├── emergency_shutdown.sv    비상 정지
 ├── data_out_mux.sv          데이터 출력 정렬
 └── mcu_data_if.sv           MCU 데이터 전송
+```
+
+### v2 추가 Modules (외부 메모리 확장)
+
+```
+├── ext_mem_if.sv            외부 SRAM/DDR 인터페이스
+├── offset_subtractor.sv     오프셋 감산 (ext mem)
+├── gain_multiplier.sv       게인 정규화 (ext mem)
+├── defect_replacer.sv       결함 화소 보간 (BRAM 2-line)
+├── lag_corrector_lti.sv     LTI 래그 보정 (ext mem state)
+├── forward_bias_ctrl.sv     Forward Bias 제어
+└── frame_buffer_ctrl.sv     프레임 버퍼 관리
 ```
 
 ---
