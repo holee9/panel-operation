@@ -164,6 +164,22 @@
 
 ---
 
+## AC-SIM-021: 24-AFE Full Data Path Integration (SPEC-FPD-007 + 009)
+
+**Given** C6 하드웨어 조합 (NT39565D x6 + AD71124 x12)의 전체 데이터 경로 골든 모델이 구성된 상태에서
+**When** 3072 행 스캔이 실행되고 12개 AFE가 동시에 LVDS 데이터를 출력하면
+**Then** 12개 AFE의 256ch x 16-bit 데이터가 올바르게 line buffer에 정렬되어야 하며 (AFE 0 first → AFE 11 last = 3072 pixels/line), CSI-2 4-lane TX로 전체 프레임 (3072x3072 RAW16)이 무결하게 전송되어야 한다
+
+---
+
+## AC-SIM-022: NT39565D 6-Chip Cascade Propagation (SPEC-FPD-004)
+
+**Given** GateNt39565dModel이 6-chip 캐스케이드 모드로 초기화된 상태에서
+**When** STV1 스타트 펄스가 chip[0]에 인가되면
+**Then** STVD 신호가 chip[0]→chip[1]→...→chip[5]로 순차 전파되어야 하며, 마지막 chip[5]의 STVD 수신 시 cascade_done이 assert되어야 한다. 전체 3072 gate lines (541ch x 6)이 1회 스캔으로 완료되어야 한다
+
+---
+
 ## Edge Case Scenarios
 
 ### EC-SIM-001: SPI Contention
@@ -205,12 +221,14 @@
 | SPEC-FPD-001 | AC-SIM-001 | AC-SIM-017 | - | 2 |
 | SPEC-FPD-002 | AC-SIM-002, 003 | - | - | 2 |
 | SPEC-FPD-003 | AC-SIM-004, 005 | - | - | 2 |
+| SPEC-FPD-004 | AC-SIM-022 | - | - | 1 |
 | SPEC-FPD-005 | AC-SIM-006, 007 | - | - | 2 |
 | SPEC-FPD-006 | AC-SIM-008 | - | - | 1 |
 | SPEC-FPD-007 | AC-SIM-009~014 | AC-SIM-011, 012 | AC-SIM-018 | 9 |
+| SPEC-FPD-007+009 | AC-SIM-021 | - | - | 1 |
 | SPEC-FPD-008 | AC-SIM-015, 016 | - | - | 2 |
 | Build/CI | - | - | AC-SIM-019, 020 | 2 |
-| **Total** | **14** | **3** | **3** | **20** |
+| **Total** | **16** | **3** | **3** | **22** |
 
 ---
 

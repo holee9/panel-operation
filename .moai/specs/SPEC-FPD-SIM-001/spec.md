@@ -91,7 +91,7 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 
 ### Module 4: Test Vector Pipeline
 
-**R-SIM-022 (Ubiquitous):** 시스템은 입력 신호 시퀀스 (hex/binary), 예상 출력 값, 타임스탬프 (클럭 사이클), 레지스터 설정 스냅샷을 포함하는 표준 형식의 테스트 벡터를 생성해야 한다 (SHALL).
+**R-SIM-022 (Ubiquitous):** 시스템은 다음 필드를 포함하는 표준 형식의 테스트 벡터를 생성해야 한다 (SHALL): 사이클 번호 (uint64, 0-indexed), 입력 신호 맵 (signal_name:hex_value 쌍), 예상 출력 신호 맵 (signal_name:hex_value 쌍), 레지스터 설정 스냅샷 (0x00-0x1F 값). 파일 헤더에 @MODULE, @SPEC, @SIGNALS_IN, @SIGNALS_OUT, @CLOCK 메타데이터를 포함해야 한다 (SHALL).
 
 **R-SIM-023 (Ubiquitous):** 테스트 벡터는 경계 조건을 포함해야 한다: 최소 tLINE (AD71124=2200, AD71143=6000), 최대 행 수 (3072), 최소/최대 SPI 클럭 (1/10 MHz) (SHALL).
 
@@ -168,9 +168,9 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 
 | Component | Parameter | Value | Source |
 |-----------|-----------|-------|--------|
-| AD71124 | tLINE min | 22 us (REG_TLINE >= 2200) | AD71124 datasheet |
-| AD71143 | tLINE min | 60 us (REG_TLINE >= 6000) | AD71143 datasheet |
-| AFE2256 | tLINE min | 51.2 us | AFE2256 datasheet |
+| AD71124 | tLINE min | 22 us (REG_TLINE >= 2200, 1 unit = 10 ns) | AD71124 datasheet |
+| AD71143 | tLINE min | 60 us (REG_TLINE >= 6000, 1 unit = 10 ns) | AD71143 datasheet |
+| AFE2256 | tLINE min | 51.2 us (REG_TLINE >= 5120, 1 unit = 10 ns) | AFE2256 datasheet |
 | AFE2256 | MCLK | 32 MHz | AFE2256 datasheet |
 | NV1047 | CLK max | 200 kHz | NV1047 datasheet |
 | NT39565D | CPV max | 200 kHz, ~100 kHz recommended | NT39565D datasheet |

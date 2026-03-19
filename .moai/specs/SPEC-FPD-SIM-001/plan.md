@@ -394,7 +394,28 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 |------|-------------|-------------|----------|
 | 3.1 | RowScanModel (공통 엔진) | - | 1일 |
 | 3.2 | GateNv1047Model (SD1/CLK/OE) | test_gate_nv1047.py | 2일 |
-| 3.3 | GateNt39565dModel (dual-STV, 6-chip) | test_gate_nt39565d.py | 3일 |
+| 3.3 | GateNt39565dModel (dual-STV, 6-chip cascade) | test_gate_nt39565d.py | 3일 |
+
+**NT39565D 6-Chip Cascade 검증 상세:**
+
+```
+// GateNt39565dModel cascade propagation pseudocode
+void GateNt39565dModel::step_cascade() {
+    // 6-chip cascade: chip[0].STVD → chip[1].STVI → ... → chip[5].STVD
+    for (int i = 1; i < m_num_chips; i++) {
+        chip_stvi[i] = chip_stvd[i-1];  // STVD → next STVI
+    }
+    // Cascade complete when last chip's STVD asserts
+    m_cascade_done = chip_stvd[m_num_chips - 1];
+    // Total gate lines: 541ch × 6 chips = 3246 (≥3072 required)
+}
+
+// Test vectors for cascade:
+// TV-004-C1: STV1 start → chip[0] STVD propagation delay
+// TV-004-C2: Full 6-chip cascade → last STVD assert
+// TV-004-C3: OE1/OE2 split during cascade (odd/even channels)
+// TV-004-C4: LR direction reversal → cascade order inversion
+```
 
 ### Phase 4: AFE Controller (SPEC-005 + 006)
 
@@ -403,6 +424,23 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 | 4.1 | AfeSpiMasterModel (daisy-chain) | - | 1일 |
 | 4.2 | AfeAd711xxModel (ACLK, SYNC, IFS) | test_afe_ad711xx.py | 3일 |
 | 4.3 | AfeAfe2256Model (MCLK, CIC, pipeline) | test_afe_afe2256.py | 3일 |
+
+**AFE2256 Pipeline Latency 모델 상세:**
+
+```
+// AfeAfe2256Model pipeline state
+struct PipelineState {
+    std::vector<uint16_t> m_pipeline_latch;  // row[n-1] ADC data (256ch)
+    uint16_t m_pipeline_age;                  // Pipeline fill counter
+    bool m_pipeline_valid;                    // First valid output after 1-row delay
+};
+
+// step() pipeline behavior:
+// Cycle N: row[n] integration starts + row[n-1] ADC readout outputs
+// m_pipeline_latch holds row[n-1] data while row[n] integrates
+// m_pipeline_valid = false for first row (no previous data)
+// m_pipeline_age increments each row, wraps at frame boundary
+```
 
 ### Phase 5: Data Path (SPEC-007) — 가장 복잡
 
