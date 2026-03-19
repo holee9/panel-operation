@@ -4,7 +4,7 @@ FPGA-based X-ray Flat Panel Detector (FPD) Control System
 
 a-Si TFT 기반 X-ray Flat Panel Detector의 FPGA 구동 제어 시스템.
 3종의 패널, 2종의 Gate IC, 3종의 AFE/ROIC를 조합한 7가지 하드웨어 조합(C1-C7)을 통합 지원하며,
-최대 24개 AFE 순차 리드아웃을 Artix-7 35T에서 구현합니다.
+최대 24개 AFE를 Artix-7 35T에서 구현합니다.
 
 ---
 
@@ -25,7 +25,7 @@ flowchart LR
         A3["Panel Control\nFSM"]
         A4["Gate IC\nDriver"]
         A5["AFE Control\n+ SPI Config"]
-        A6["LVDS RX\n+ MUX Select"]
+        A6["LVDS RX\n(per AFE)"]
         A7["Line Buffer\n(BRAM)"]
         A8["Calibration\nPipeline"]
         A9["Data Output\nto MCU"]
@@ -46,11 +46,9 @@ flowchart LR
         GATE["Gate IC\nNV1047 / NT39565D"]
         PANEL["a-Si TFT\nPanel"]
         AFE["AFE/ROIC\n(max 24 chips)"]
-        LVDSMUX["LVDS\nMUX"]
 
         GATE -->|"Row Scan\n(VGG/VEE)"| PANEL
         PANEL -->|"Charge\nSignal"| AFE
-        AFE --> LVDSMUX
     end
 
     MCU <-->|"SPI\n1-10 MHz"| A1
@@ -59,7 +57,7 @@ flowchart LR
     GEN <-->|"TTL\nGPIO"| A3
     A4 -->|"SD/CLK/OE\nSTV/CPV"| GATE
     A5 -->|"SPI Chain\nSYNC/ACLK"| AFE
-    LVDSMUX -->|"LVDS\n(Sequential)"| A6
+    AFE -->|"LVDS\n(Direct)"| A6
 ```
 
 ### Panel - Gate IC - ROIC - FPGA 연결 구조
@@ -69,8 +67,7 @@ flowchart TB
     subgraph FPGA_SIDE[" FPGA "]
         F1["gate_ic_driver\n(SD, CLK, OE)"]
         F2["afe_ctrl_if\n(SPI, SYNC, ACLK)"]
-        F3["line_data_rx\n(LVDS Receiver)"]
-        F4["MUX Select\n(5-bit)"]
+        F3["line_data_rx ×N\n(LVDS Receiver)"]
     end
 
     subgraph GATE_SIDE[" Gate IC  ×N "]
@@ -94,55 +91,40 @@ flowchart TB
         A24["AFE #24\n256ch"]
     end
 
-    MUX["External\nLVDS MUX\n(24:1)"]
-
     F1 ==>|"SD1/SD2, CLK\nOE, L/R"| GATE_SIDE
     GATE_SIDE ==>|"VGG/VEE\nRow ON/OFF"| ROW
     COL ==>|"Analog\nCharge"| AFE_SIDE
     F2 ==>|"SPI Daisy-Chain\nSYNC, ACLK/MCLK\n(Broadcast)"| AFE_SIDE
 
-    A1 -->|LVDS| MUX
-    A2 -->|LVDS| MUX
-    A3 -->|LVDS| MUX
-    A24 -->|LVDS| MUX
-    F4 -.->|Select| MUX
-    MUX ==>|"LVDS Data\n(1 AFE at a time)"| F3
+    A1 -->|"LVDS Direct"| F3
+    A2 -->|"LVDS Direct"| F3
+    A3 -->|"LVDS Direct"| F3
+    A24 -->|"LVDS Direct"| F3
 ```
 
-### 24-AFE 순차 리드아웃 시퀀스
+### 데이터 수집 시퀀스 (1 Row)
 
 ```mermaid
 sequenceDiagram
-    participant F as FPGA
-    participant A as All 24 AFEs
-    participant M as LVDS MUX
-    participant R as LVDS RX
+    participant FSM as FPGA FSM
+    participant GATE as Gate IC
+    participant PANEL as Panel
+    participant AFE as All AFEs
+    participant RX as LVDS RX
 
-    Note over F,A: Row N Readout
-
-    F ->> A: SYNC broadcast (all AFEs convert)
+    FSM ->> GATE: Gate ON (Row N)
+    GATE ->> PANEL: VGG → Row N active
+    PANEL ->> AFE: Charge transfer (all columns)
+    FSM ->> GATE: Gate OFF
+    FSM ->> AFE: SYNC (broadcast)
 
     rect rgb(230, 245, 255)
-        F ->> M: Select AFE #1
-        M ->> R: LVDS data (256ch)
-        R ->> F: Store to buffer
+        Note over AFE,RX: All AFEs convert + output simultaneously
+        AFE ->> RX: LVDS data (all AFEs in parallel)
+        RX ->> FSM: Row N stored in line buffer
     end
 
-    rect rgb(240, 255, 240)
-        F ->> M: Select AFE #2
-        M ->> R: LVDS data (256ch)
-        R ->> F: Store to buffer
-    end
-
-    Note over F,M: ... AFE #3 ~ #23 ...
-
-    rect rgb(255, 245, 230)
-        F ->> M: Select AFE #24
-        M ->> R: LVDS data (256ch)
-        R ->> F: Store to buffer
-    end
-
-    Note over F: Row N complete
+    Note over FSM: Row N complete → next row
 ```
 
 ### 신호 흐름 요약
@@ -152,7 +134,7 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
                                                             │
                                                      Charge Signal
                                                             ▼
-MCU ◀──Data── FPGA ◀──LVDS MUX◀── AFE #1~#24 ◀──────── Panel (Column Out)
+MCU ◀──Data── FPGA ◀──LVDS Direct── AFE #1~#24 ◀──── Panel (Column Out)
                 │                      ▲
                 │                      │
                 └──SPI/SYNC/ACLK───────┘  (Broadcast to all AFEs)
@@ -187,7 +169,7 @@ MCU ◀──Data── FPGA ◀──LVDS MUX◀── AFE #1~#24 ◀───�
 | BRAM36K | 50 (1,800 Kb) |
 | I/O Pins | 250 |
 | MMCM | 5 |
-| AFE Support | Max 24 chips (sequential readout) |
+| AFE Support | Max 24 chips |
 | Toolchain | Vivado 2025.2 |
 
 ---
@@ -203,7 +185,7 @@ fpga_top_cX.sv              (조합별 Top-Level, 핀 매핑)
 │   ├── gate_ic_driver       [NV1047 | NT39565D]
 │   │   └── row_scan_eng.sv  행 스캔 카운터
 │   ├── afe_ctrl_if          [AD711xx | AFE2256]
-│   │   └── line_data_rx.sv  LVDS 수신 + MUX 선택
+│   │   └── line_data_rx.sv  LVDS 수신 (per AFE, direct connection)
 │   │       └── line_buf_ram.sv  BRAM 라인 버퍼
 │   └── prot_mon.sv          과노출 보호
 ├── calibration_pipeline     오프셋 → 게인 → 결함 보정
@@ -244,7 +226,7 @@ fpga_top_cX.sv              (조합별 Top-Level, 핀 매핑)
 | SPEC-FPD-009 | 7 | Calibration Pipeline (Offset/Gain/Defect) |
 | SPEC-FPD-010 | 8 | Forward Bias + LTI Lag Correction |
 | SPEC-FPD-011 | 9 | Integration: fpga_top C1 (reference) |
-| SPEC-FPD-012 | 9 | Integration: fpga_top C6 (24-AFE sequential) |
+| SPEC-FPD-012 | 9 | Integration: fpga_top C6 (24-AFE) |
 | SPEC-FPD-013 | 10 | Radiography Static Mode Extension |
 
 상세 계획: [`.moai/project/implementation-plan.md`](.moai/project/implementation-plan.md)
