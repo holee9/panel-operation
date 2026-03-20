@@ -267,7 +267,21 @@ flowchart LR
 
 ## SW-First Verification
 
-**SPEC 문서**: [`.moai/specs/SPEC-FPD-SIM-001/`](.moai/specs/SPEC-FPD-SIM-001/) (35개 EARS 요구사항, 20개 수용기준, 6-Phase 구현 계획)
+**SPEC 문서**: [`.moai/specs/SPEC-FPD-SIM-001/`](.moai/specs/SPEC-FPD-SIM-001/) (35개 EARS 요구사항, 21개 수용기준, 6-Phase 구현 계획)
+
+**품질 리뷰**: 8.0/10 — READY FOR IMPLEMENTATION ([Review Report](SPEC-FPD-SIM-001-REVIEW.md))
+
+| 리뷰 항목 | 결과 |
+|-----------|------|
+| CRITICAL | 0건 |
+| MAJOR | 3건 (모두 수정 완료) |
+| MINOR | 4건 (모두 수정 완료) |
+| 교차검증 | HIGH 4건 + MEDIUM 5건 + LOW 4건 (모두 수정 완료) |
+
+**MAJOR 수정 내역:**
+- MAJOR-001: NT39565D 6-chip 캐스케이드 STVD 전파 의사코드 추가 (plan.md)
+- MAJOR-002: AFE2256 파이프라인 지연 상태 변수 (`pipeline_latch`, `output_delay`) 명세 보강 (plan.md)
+- MAJOR-003: NT39565D 6-chip 캐스케이드 수용기준 AC-SIM-021 신규 추가 (acceptance.md)
 
 ### 5단계 검증 파이프라인
 
@@ -336,6 +350,11 @@ GoldenModelBase (추상 기반: reset/step/compare)
 ├── Csi2LaneDistModel      SPEC-007: 2/4-lane byte interleaving
 ├── ProtMonModel           SPEC-008: 5초 타임아웃, 과전압/과온도 감지
 └── PowerSeqModel          SPEC-008: VGL→VGH 시퀀스, 8-state FSM
+
+주요 모델 구현 세부사항:
+- GateNt39565dModel: STVD 캐스케이드 전파 (6-chip daisy-chain, 1 CPV clock/chip 지연, <=100ns 스큐 검증)
+- AfeAfe2256Model: 파이프라인 모드 내부 상태 (pipeline_latch[256], output_delay_cycles 추적)
+- Csi2PacketModel: CRC-16 CCITT (0x1021) + ECC (Annex A) 구현
 ```
 
 ### Xilinx Primitive Handling (Verilator 호환)
@@ -572,6 +591,13 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 
 | SPEC-FPD-SIM-001 | SW-First Verification Framework | GoldenModelBase, 14 C++ models, cocotb tests, Verilator harness | 각 SPEC 병렬 |
 
+**SPEC 진행 상태:**
+
+| SPEC | Status | 비고 |
+|------|--------|------|
+| SPEC-FPD-SIM-001 | SPEC 완료 (8.0/10), 구현 대기 | 품질 리뷰 + 교차검증 수정 완료 |
+| SPEC-FPD-001 ~ 010 | SPEC 미수립 | SIM-001 기반으로 순차 수립 예정 |
+
 **Implementation Order**: SIM-001 (각 SPEC과 병행) + 001 → (002 + 008 병렬) → (003 + 005 병렬) → (004 + 006 병렬) → 007 → 009 → 010
 
 ### v2: 외부 메모리 확장 (v1 완료 후)
@@ -598,10 +624,35 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | Directory | Content |
 |-----------|---------|
 | `docs/fpga-design/` | FPGA 설계 사양서 (모듈 아키텍처, 구동 알고리즘, 정지영상, 전원 설정) |
-| `docs/research/` | 부품/알고리즘 리서치 (TFT 물리, Gate IC, AFE, 래그 보정, 캘리브레이션) |
+| `docs/research/` | 부품/알고리즘 리서치 (TFT 물리, Gate IC, AFE, 래그 보정, 캘리브레이션, 다중 AFE) |
 | `docs/datasheet/` | IC 데이터시트 PDF (AD71124, AD71143, AFE2256, NV1047, NT39565D, 패널) |
 | `.moai/project/` | 프로젝트 문서 (product.md, structure.md, tech.md, implementation-plan.md) |
-| `sim/` | SW-First 검증 (C++ 골든 모델, cocotb 테스트, Verilator) |
+| `.moai/specs/` | SPEC 문서 (EARS 요구사항, 수용기준, 구현 계획, 리서치) |
+| `sim/` | SW-First 검증 (C++ 골든 모델, cocotb 테스트, Verilator) — 구현 대기 |
+
+### 리서치 문서 목록
+
+| File | Topic |
+|------|-------|
+| `research_01_asi_tft_physics.md` | a-Si TFT 물리 특성 및 구동 원리 |
+| `research_02_gate_ic_control.md` | Gate IC 제어 (NV1047, NT39565D) |
+| `research_03_roic_afe_optimal.md` | ROIC/AFE 최적 구동 (AD71124, AD71143, AFE2256) |
+| `research_04_drive_sequence_patents.md` | 구동 시퀀스 특허 분석 |
+| `research_05_lag_correction.md` | 이미지 래그 보정 알고리즘 |
+| `research_06_calibration.md` | 캘리브레이션 (Offset, Gain, Defect) |
+| `research_07_multi_afe_advanced.md` | 다중 AFE 고급 구동 (24-chip LVDS 직결) |
+
+---
+
+## Change History
+
+| Date | Summary |
+|------|---------|
+| 2026-03-19 | 초기 프로젝트 설정 + README + RTL v1 모듈 구조 (22 .sv) |
+| 2026-03-19 | SPEC-FPD-SIM-001 수립 (SW-First 검증 프레임워크) |
+| 2026-03-19 | 품질 리뷰 8.0/10 통과, MAJOR 3건 + MINOR 4건 수정 |
+| 2026-03-19 | 교차검증 일괄 수정 (HIGH 4 + MEDIUM 5 + LOW 4건) |
+| 2026-03-20 | research_01 문자 깨짐 복구 (정규화 개요 추가) |
 
 ---
 

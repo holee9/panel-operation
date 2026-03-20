@@ -1,5 +1,49 @@
 # a-Si TFT Flat Panel Detector (FPD): Physical Characteristics and Driving Principles
 
+> Editor note (2026-03-19): The original body of this document contains partial character corruption.
+> For issue #2 verification, the normalized overview below restores the top-level summary and core terminology
+> without deleting the original research body. Additional section-by-section cleanup can continue later.
+
+## Normalized Overview
+
+**Research compiled:** 2026-03-18  
+**Topic:** Comprehensive technical review of amorphous silicon thin-film transistor flat panel detector physics for FPGA control system design
+
+### Clean Table of Contents
+
+1. Pixel Architecture and Structure
+2. Charge Trapping in a-Si:H and Threshold Voltage Shift
+3. Pixel Charge Collection: Integration Mode, Dark Current, Leakage
+4. Gate Line Capacitance and RC Delay
+5. Ghosting / Image Lag Mechanism
+6. Panel Stabilization Requirements
+7. Idle Mode Driving and Dummy Scan
+8. Effect of X-ray Dose on Panel Response
+9. Key Timing Parameters
+10. State-of-the-Art Pixel Designs: Indirect vs. Direct Conversion
+11. Design Implications for FPGA Control
+12. Quantitative Reference Tables
+13. References
+
+### Clean Summary of Section 1
+
+- Pixel structure: photoconversion element, storage capacitor, and TFT switch
+- Exposure mode: TFT OFF, charge accumulates on pixel capacitance
+- Readout mode: gate pulse turns TFT ON, stored charge is transferred to the data line
+- Typical pixel pitch: about 100-200 um for radiography panels
+- Typical fill factor: about 70-85%
+- Typical photodiode capacitance: about 1.9-2.5 pF
+- Typical storage capacitor: about 0.5-2.0 pF
+- a-Si:H properties:
+  electron mobility is much lower than crystalline silicon, hole mobility is even lower, and the broad defect-state distribution is a major cause of threshold shift and image lag
+
+### Reference Links Used in the Summary
+
+- [TFT Flat-Panel Array Image Acquisition - Radiology Key](https://radiologykey.com/tft-flat-panel-array-image-acquisition/)
+- [Flat-Panel Imaging Arrays for Digital Radiography, Tredwell 2009](https://www.imagesensors.org/Past%20Workshops/2009%20Workshop/2009%20Papers/065_paper_tredwell_invited.pdf)
+- [Hoheisel, Amorphous Silicon X-Ray Detectors, ISCMP 1996](https://www.mhoheisel.de/docs/ISCMP91996112.pdf)
+- [Nathan et al., a-Si detector and TFT technology, Microelectronics Journal 2000](https://www.fisica.unisa.it/antonio.dibartolomeo/MaterialeDidatticoFisicaSemiconduttori/Articoli/A-Si_andTFTtechnology%20for%20Xray%20detection.pdf)
+
 **Research compiled:** 2026-03-18  
 **Topic:** Comprehensive technical review of amorphous silicon thin-film transistor flat panel detector physics, for FPGA control system design
 
