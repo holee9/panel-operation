@@ -21,6 +21,46 @@ module afe_spi_master #(
     output logic        spi_cs_n
 );
 
-  // TODO: Implement SPI master with daisy-chain shift
+  logic [15:0] shift_reg;
+  logic [9:0]  bit_count;
+  logic        active;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      cmd_done <= 1'b0;
+      spi_sck <= 1'b0;
+      spi_sdi <= 1'b0;
+      spi_cs_n <= 1'b1;
+      shift_reg <= '0;
+      bit_count <= '0;
+      active <= 1'b0;
+    end else begin
+      cmd_done <= 1'b0;
+      if (!active) begin
+        spi_sck <= 1'b0;
+        spi_cs_n <= 1'b1;
+        if (cmd_start) begin
+          active <= 1'b1;
+          spi_cs_n <= 1'b0;
+          shift_reg <= cmd_wdata;
+          bit_count <= {5'd0, cmd_chain_len} * 10'd24;
+        end
+      end else begin
+        spi_sck <= ~spi_sck;
+        if (!spi_sck) begin
+          spi_sdi <= shift_reg[15];
+          shift_reg <= {shift_reg[14:0], spi_sdo};
+          if (bit_count > 0) begin
+            bit_count <= bit_count - 10'd1;
+          end
+          if (bit_count == 10'd1) begin
+            active <= 1'b0;
+            spi_cs_n <= 1'b1;
+            cmd_done <= 1'b1;
+          end
+        end
+      end
+    end
+  end
 
 endmodule

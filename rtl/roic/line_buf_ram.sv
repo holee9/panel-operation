@@ -28,6 +28,31 @@ module line_buf_ram
     output logic        bank_swap      // Bank swap event
 );
 
-  // TODO: Implement dual-port BRAM with ping-pong logic
+  logic [PIXEL_WIDTH-1:0] mem [0:1][0:N_COLS-1];
+
+  always_ff @(posedge wr_clk or negedge rst_n) begin
+    if (!rst_n) begin
+      wr_line_done <= 1'b0;
+      bank_swap <= 1'b0;
+    end else begin
+      wr_line_done <= 1'b0;
+      bank_swap <= 1'b0;
+      if (wr_en) begin
+        mem[wr_bank_sel][wr_addr] <= wr_data;
+        if (wr_addr + 12'd1 >= N_COLS) begin
+          wr_line_done <= 1'b1;
+          bank_swap <= 1'b1;
+        end
+      end
+    end
+  end
+
+  always_ff @(posedge rd_clk or negedge rst_n) begin
+    if (!rst_n) begin
+      rd_data <= '0;
+    end else if (rd_en) begin
+      rd_data <= mem[rd_bank_sel][rd_addr];
+    end
+  end
 
 endmodule

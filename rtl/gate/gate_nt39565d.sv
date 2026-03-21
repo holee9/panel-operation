@@ -40,6 +40,40 @@ module gate_nt39565d
     output logic        row_done
 );
 
-  // TODO: Implement dual-STV + CPV + cascade state machine
+  logic gate_on_prev;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      nt_stv1l <= 1'b0;
+      nt_stv2l <= 1'b0;
+      nt_stv1r <= 1'b0;
+      nt_stv2r <= 1'b0;
+      nt_cpv_l <= 1'b0;
+      nt_cpv_r <= 1'b0;
+      nt_lr <= 1'b0;
+      nt_oe1_l <= 1'b0;
+      nt_oe1_r <= 1'b0;
+      nt_oe2_l <= 1'b0;
+      nt_oe2_r <= 1'b0;
+      cascade_complete <= 1'b0;
+      row_done <= 1'b0;
+      gate_on_prev <= 1'b0;
+    end else begin
+      nt_lr <= scan_dir;
+      nt_stv1l <= gate_on_pulse && (row_index[0] == 1'b0);
+      nt_stv2l <= gate_on_pulse && (row_index[0] == 1'b1);
+      nt_stv1r <= gate_on_pulse && (chip_sel == 2'b01);
+      nt_stv2r <= gate_on_pulse && (chip_sel == 2'b10);
+      nt_cpv_l <= gate_on_pulse ? clk : 1'b0;
+      nt_cpv_r <= gate_on_pulse ? clk : 1'b0;
+      nt_oe1_l <= gate_on_pulse && !row_index[0];
+      nt_oe1_r <= gate_on_pulse && !row_index[0];
+      nt_oe2_l <= gate_on_pulse && row_index[0];
+      nt_oe2_r <= gate_on_pulse && row_index[0];
+      cascade_complete <= cascade_stv_return && (mode_sel != 2'b00);
+      row_done <= gate_on_prev && !gate_on_pulse;
+      gate_on_prev <= gate_on_pulse;
+    end
+  end
 
 endmodule

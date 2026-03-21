@@ -33,6 +33,32 @@ module gate_nv1047
     output logic        row_done
 );
 
-  // TODO: Implement shift register + OE timing state machine
+  logic gate_on_prev;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      nv_sd1 <= 1'b0;
+      nv_sd2 <= 1'b0;
+      nv_clk <= 1'b0;
+      nv_oe <= 1'b1;
+      nv_ona <= 1'b1;
+      nv_lr <= 1'b0;
+      nv_rst <= 1'b0;
+      nv_md <= 2'b00;
+      row_done <= 1'b0;
+      gate_on_prev <= 1'b0;
+    end else begin
+      nv_sd1 <= row_index[0];
+      nv_sd2 <= row_index[1];
+      nv_clk <= gate_on_pulse ? clk : 1'b0;
+      nv_oe <= ~gate_on_pulse;
+      nv_ona <= ~reset_all;
+      nv_lr <= scan_dir;
+      nv_rst <= rst_n;
+      nv_md <= cfg_mode;
+      row_done <= gate_on_prev && !gate_on_pulse;
+      gate_on_prev <= gate_on_pulse;
+    end
+  end
 
 endmodule

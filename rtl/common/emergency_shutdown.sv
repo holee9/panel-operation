@@ -17,6 +17,32 @@ module emergency_shutdown (
     output logic [7:0]  shutdown_code   // Reason code
 );
 
-  // TODO: Implement emergency detection with async fast path
+  always_comb begin
+    shutdown_req = 1'b0;
+    force_gate_off = 1'b0;
+    shutdown_code = 8'h00;
+
+    if (!hw_emergency_n) begin
+      shutdown_req = 1'b1;
+      force_gate_off = 1'b1;
+      shutdown_code = 8'hEE;
+    end else if (vgh_over) begin
+      shutdown_req = 1'b1;
+      force_gate_off = 1'b1;
+      shutdown_code = 8'h01;
+    end else if (temp_over) begin
+      shutdown_req = 1'b1;
+      force_gate_off = 1'b1;
+      shutdown_code = 8'h02;
+    end else if (pll_unlocked) begin
+      shutdown_req = 1'b1;
+      force_gate_off = 1'b1;
+      shutdown_code = 8'h03;
+    end else if (vgh_under) begin
+      shutdown_req = 1'b1;
+      force_gate_off = 1'b1;
+      shutdown_code = 8'h04;
+    end
+  end
 
 endmodule

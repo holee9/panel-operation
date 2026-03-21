@@ -19,6 +19,29 @@ module prot_mon
     output logic        force_gate_off     // force all gates OFF
 );
 
-  // TODO: Implement timeout counter and error detection
+  logic [23:0] exposure_count;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      exposure_count <= '0;
+      err_timeout <= 1'b0;
+      err_flag <= 1'b0;
+      force_gate_off <= 1'b0;
+    end else begin
+      if ((fsm_state == ST_INTEGRATE) && xray_active) begin
+        exposure_count <= exposure_count + 24'd1;
+        if ((exposure_count + 24'd1) >= cfg_max_exposure) begin
+          err_timeout <= 1'b1;
+          err_flag <= 1'b1;
+          force_gate_off <= 1'b1;
+        end
+      end else if (fsm_state == ST_IDLE) begin
+        exposure_count <= '0;
+        err_timeout <= 1'b0;
+        err_flag <= 1'b0;
+        force_gate_off <= 1'b0;
+      end
+    end
+  end
 
 endmodule

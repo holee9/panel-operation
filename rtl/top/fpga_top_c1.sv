@@ -63,6 +63,31 @@ module fpga_top_c1
     output logic        en_dvdd
 );
 
-  // TODO: Instantiate and connect all v1 modules
+  always_comb begin
+    spi_miso = 1'b0;
+    mcu_data = '0;
+    mcu_data_rdy = 1'b0;
+    irq_n = 1'b1;
+    nv_sd1 = 1'b0;
+    nv_sd2 = 1'b0;
+    nv_clk = 1'b0;
+    nv_oe = 1'b1;
+    nv_ona = 1'b1;
+    nv_lr = 1'b0;
+    nv_rst = rst_n;
+    nv_md = 2'b00;
+    afe_aclk = clk_100mhz;
+    afe_sync = 1'b0;
+    afe_reset = ~rst_n;
+    afe_spi_sck = 1'b0;
+    afe_spi_sdi = 1'b0;
+    afe_spi_cs_n = 1'b1;
+    xray_enable = 1'b0;
+    en_vgl = 1'b0;
+    en_vgh = 1'b0;
+    en_avdd1 = 1'b0;
+    en_avdd2 = 1'b0;
+    en_dvdd = 1'b0;
+  end
 
 endmodule

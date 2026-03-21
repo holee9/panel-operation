@@ -20,6 +20,7 @@ module afe_afe2256
     input  logic        cfg_pipeline_en,  // Integrate-and-read pipeline
     input  logic        cfg_tp_sel,       // Timing profile (up/down)
     input  logic [3:0]  cfg_nchip,        // Number of AFE chips
+    input  logic [15:0] cfg_tline,
 
     // AFE output pins
     output logic        afe_mclk,         // Master clock to AFE (32 MHz)
@@ -42,6 +43,60 @@ module afe_afe2256
     output logic        afe_ready
 );
 
-  // TODO: Implement SPI init + CIC profile load + MCLK/SYNC/TP_SEL generation
+  logic [15:0] line_count;
+  logic [7:0]  cfg_count;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      afe_mclk <= 1'b0;
+      afe_sync <= 1'b0;
+      afe_tp_sel <= 1'b0;
+      afe_reset <= 1'b1;
+      afe_spi_sck <= 1'b0;
+      afe_spi_sdi <= 1'b0;
+      afe_spi_cs_n <= 1'b1;
+      dout_window_valid <= 1'b0;
+      fclk_expected <= 1'b0;
+      config_done <= 1'b0;
+      afe_ready <= 1'b0;
+      line_count <= '0;
+      cfg_count <= '0;
+    end else begin
+      config_done <= 1'b0;
+      afe_sync <= 1'b0;
+      afe_mclk <= ~afe_mclk;
+      afe_tp_sel <= cfg_tp_sel;
+
+      if (config_req && !afe_ready) begin
+        afe_spi_cs_n <= 1'b0;
+        afe_spi_sck <= ~afe_spi_sck;
+        afe_spi_sdi <= cfg_ifs[0] ^ cfg_cic_en ^ cfg_cic_profile[0] ^ cfg_pipeline_en ^ cfg_nchip[0];
+        cfg_count <= cfg_count + 8'd1;
+        if (cfg_count >= 8'd15) begin
+          afe_spi_cs_n <= 1'b1;
+          afe_ready <= 1'b1;
+          config_done <= 1'b1;
+          afe_reset <= 1'b0;
+          cfg_count <= '0;
+        end
+      end
+
+      if (afe_start && afe_ready) begin
+        afe_sync <= 1'b1;
+        dout_window_valid <= 1'b1;
+        fclk_expected <= 1'b1;
+        line_count <= line_count + 16'd1;
+        if (line_count + 16'd1 >= cfg_tline) begin
+          dout_window_valid <= 1'b0;
+          fclk_expected <= 1'b0;
+          line_count <= '0;
+        end
+      end else if (!afe_start) begin
+        dout_window_valid <= 1'b0;
+        fclk_expected <= 1'b0;
+        line_count <= '0;
+      end
+    end
+  end
 
 endmodule

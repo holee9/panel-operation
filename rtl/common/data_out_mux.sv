@@ -17,6 +17,18 @@ module data_out_mux
     output logic        mcu_line_end
 );
 
-  // TODO: Implement bus alignment and output formatting
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      mcu_pixel_data <= '0;
+      mcu_data_valid <= 1'b0;
+      mcu_line_start <= 1'b0;
+      mcu_line_end <= 1'b0;
+    end else begin
+      mcu_pixel_data <= line_pixel_data;
+      mcu_data_valid <= line_data_valid;
+      mcu_line_start <= line_data_valid && (line_pixel_idx == 12'd0);
+      mcu_line_end <= line_data_valid && (line_pixel_idx == 12'd2047);
+    end
+  end
 
 endmodule
