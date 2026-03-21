@@ -228,6 +228,54 @@
 
 ---
 
+## AC-SIM-029: AFE2256 CIC Variant Validation (C3, C5, C7)
+
+**Given** AfeAfe2256Model이 CIC 활성화 상태(C3/C5/C7)로 구성되었을 때
+**When** CIC compensation이 적용된 readout이 수행되면
+**Then** CIC 보상된 출력이 비-CIC 출력과 구분되며, CIC 프로파일 레지스터 설정이 올바르게 반영되어야 한다
+
+---
+
+## AC-SIM-030: AD71143 Low-Power Variant Validation (C2)
+
+**Given** AfeAd711xxModel이 AD71143 모드(IFS_WIDTH=5, tLINE>=6000)로 구성되었을 때
+**When** 저전력 모드 readout이 수행되면
+**Then** tLINE이 60us 이상이고, IFS가 5-bit 범위(0~31) 내에서 동작해야 한다
+
+---
+
+## AC-SIM-031: Non-Square Panel Validation (C4, C5)
+
+**Given** PanelFsmModel이 R1714 패널(2048x1680, 비정방형)로 구성되었을 때
+**When** 전체 프레임 readout이 수행되면
+**Then** row count가 1680이고, 올바른 프레임 크기(2048x1680x16bit)가 생성되어야 한다
+
+---
+
+## AC-SIM-032: REG_LINE_IDX Update Verification
+
+**Given** panel_ctrl_fsm이 SCAN_LINE 상태에서 row scan이 진행 중일 때
+**When** 각 행이 완료되면
+**Then** REG_LINE_IDX가 현재 행 번호(0~N-1)로 업데이트되어야 한다
+
+---
+
+## AC-SIM-033: CDC Reset Synchronization Verification
+
+**Given** 다중 클럭 도메인(SYS_CLK, ACLK, MCLK, DCLK)이 활성화된 상태에서
+**When** async reset이 assert되면
+**Then** 모든 클럭 도메인에서 리셋이 2-FF 동기화를 거쳐 안전하게 전파되어야 한다
+
+---
+
+## AC-SIM-034: Mismatch Struct Verification
+
+**Given** GoldenModelBase.compare()가 RTL 출력과 비교를 수행할 때
+**When** 불일치가 발견되면
+**Then** Mismatch 구조체에 cycle(uint64), signal_name(string), expected(uint32), actual(uint32) 필드가 포함되어야 한다
+
+---
+
 ## Edge Case Scenarios
 
 ### EC-SIM-001: SPI Contention
@@ -267,20 +315,63 @@
 | SPEC | Golden Model AC | cocotb AC | Verilator AC | Total |
 |------|----------------|-----------|--------------|-------|
 | SPEC-FPD-001 | AC-SIM-001 | AC-SIM-017 | - | 2 |
-| SPEC-FPD-002 | AC-SIM-002, 003, **025** | - | - | 3 |
+| SPEC-FPD-002 | AC-SIM-002, 003, **025**, **031**, **032** | - | - | 5 |
 | SPEC-FPD-003 | AC-SIM-004, 005 | - | - | 2 |
 | SPEC-FPD-004 | AC-SIM-022 | - | - | 1 |
-| SPEC-FPD-005 | AC-SIM-006, 007 | - | - | 2 |
-| SPEC-FPD-006 | AC-SIM-008, **026** | - | - | 2 |
+| SPEC-FPD-005 | AC-SIM-006, 007, **030** | - | - | 3 |
+| SPEC-FPD-006 | AC-SIM-008, **026**, **029** | - | - | 3 |
 | SPEC-FPD-007 | AC-SIM-009~014 | AC-SIM-011, 012 | AC-SIM-018 | 9 |
 | SPEC-FPD-007+009 | AC-SIM-021 | - | - | 1 |
 | SPEC-FPD-008 | AC-SIM-015, 016 | - | - | 2 |
 | SPEC-FPD-010 | **AC-SIM-023, 024** | - | - | 2 |
+| CDC | **AC-SIM-033** | - | - | 1 |
 | Build/CI | - | - | AC-SIM-019, 020 | 2 |
-| Infrastructure | **AC-SIM-027, 028** | - | - | 2 |
-| **Total** | **22** | **3** | **3** | **28** |
+| Infrastructure | **AC-SIM-027, 028**, **034** | - | - | 3 |
+| **Total** | **28** | **3** | **3** | **34** |
 
 ---
 
-Version: 1.0.0
+## Traceability Matrix
+
+| AC-ID | R-ID | Module | Description |
+|-------|------|--------|-------------|
+| AC-SIM-001 | R-SIM-001, R-SIM-002 | SPI Slave | SPI Mode 0/3, 32-register R/W |
+| AC-SIM-002 | R-SIM-003 | Panel FSM | 7-state FSM, 5 modes |
+| AC-SIM-003 | R-SIM-004, R-SIM-007 | Panel FSM | CONTINUOUS auto-repeat, timeout |
+| AC-SIM-004 | R-SIM-008 | Gate NV1047 | SD1 shift register, OE/ONA |
+| AC-SIM-005 | R-SIM-008 | Gate NV1047 | Gate settle timing |
+| AC-SIM-006 | R-SIM-005 | AFE AD711xx | ACLK/SYNC timing |
+| AC-SIM-007 | R-SIM-005 | AFE AD711xx | ADC conversion cycle |
+| AC-SIM-008 | R-SIM-006 | AFE AFE2256 | Pipeline 1-row delay |
+| AC-SIM-009 | R-SIM-011, R-SIM-012, R-SIM-013 | CSI-2 TX | Packet structure + CRC + ECC |
+| AC-SIM-010 | R-SIM-014, R-SIM-015 | CSI-2 Lane | 2/4-lane interleaving |
+| AC-SIM-011 | R-SIM-017, R-SIM-018 | Line Buffer | CDC async FIFO |
+| AC-SIM-012 | R-SIM-019 | Line Buffer | Ping-pong bank swap |
+| AC-SIM-013 | R-SIM-020, R-SIM-021 | Multi-AFE | 24-AFE data alignment |
+| AC-SIM-014 | R-SIM-022 | Test Vector | Standard format |
+| AC-SIM-015 | R-SIM-023 | Test Vector | Dual format (hex/binary) |
+| AC-SIM-016 | R-SIM-010 | Power Seq | VGL→VGH sequence |
+| AC-SIM-017 | R-SIM-024 | Verilator | Behavioral wrapper |
+| AC-SIM-018 | R-SIM-025 | Verilator | Cycle-accurate comparison |
+| AC-SIM-019 | R-SIM-026 | cocotb | Python testbench |
+| AC-SIM-020 | R-SIM-027 | cocotb | Regression suite |
+| AC-SIM-021 | R-SIM-009 | Gate NT39565D | 6-chip cascade sync |
+| AC-SIM-022 | R-SIM-009 | Gate NT39565D | STVD propagation |
+| AC-SIM-023 | R-SIM-004, R-SIM-038 | Panel FSM | Radiography 30s timeout |
+| AC-SIM-024 | R-SIM-007 | Panel FSM | DARK_FRAME mode |
+| AC-SIM-025 | R-SIM-028 | Build System | CMake cross-platform |
+| AC-SIM-026 | R-SIM-006 | AFE AFE2256 | SYNC timing |
+| AC-SIM-027 | R-SIM-029 | Infrastructure | GoldenModelBase interface |
+| AC-SIM-028 | R-SIM-023 | Test Vector | Dual format validation |
+| AC-SIM-029 | R-SIM-006 | AFE AFE2256 | CIC variant (C3/C5/C7) |
+| AC-SIM-030 | R-SIM-005 | AFE AD71143 | Low-power variant (C2) |
+| AC-SIM-031 | R-SIM-003 | Panel FSM | Non-square panel (C4/C5) |
+| AC-SIM-032 | R-SIM-003 | Panel FSM | REG_LINE_IDX update |
+| AC-SIM-033 | R-SIM-039 | CDC | Reset synchronization |
+| AC-SIM-034 | R-SIM-029 | Infrastructure | Mismatch struct |
+
+---
+
+Version: 1.1.0
 Created: 2026-03-19
+Updated: 2026-03-20

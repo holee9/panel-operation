@@ -131,11 +131,15 @@ C7     X239AW1-102     NT39565D    AFE2256×N   대형 43×43 고화질
 | `clk_rst_mgr` | L1 | 클럭 분배(ACLK/MCLK/DCLK), 리셋 동기화 | AFE 종류에 따라 클럭 주파수 변경 |
 | `reg_bank` | L1 | 설정/상태 레지스터 파일 (32개 이내) | 공통 (조합별 일부 레지스터 다름) |
 | `panel_ctrl_fsm` | L1 | 메인 구동 FSM (IDLE/RESET/INTEG/READOUT/DONE) | 공통 구조, 타이밍값만 다름 |
+| `power_sequencer` | L1 | 전원 모드 FSM (PWR_POWER_UP, ACTIVE, IDLE_L1-L3, CAL_DARK), VGL-before-VGH 시퀀싱 | 공통 |
+| `emergency_shutdown` | L1 | 과전압/과온도/PLL 장애/하드웨어 비상 감지 및 긴급 차단 | 공통 |
 | `gate_ic_driver` | L2 | Gate IC 종류별 시퀀스 출력 | **NV1047** / **NT39565D** 각각 구현 |
 | `row_scan_eng` | L2 | 행 인덱스 카운터, Gate ON/OFF 타이밍 생성 | 공통 (최대 row수만 파라미터) |
 | `afe_ctrl_if` | L2 | AFE 종류별 타이밍 제어 | **AD71124** / **AD71143** / **AFE2256** 각각 구현 |
 | `line_data_rx` | L2 | LVDS 수신, 비트 역직렬화, 라인 완료 감지 | ADI LVDS / TI LVDS (포맷 다름) |
 | `prot_mon` | L2 | 과노출 타임아웃, 에러 플래그, 강제 gate-off | 공통 |
+| `panel_reset_ctrl` | L2 | 리셋 시퀀스 + 더미 스캔 (REG_NRESET 설정) | 패널 공통 |
+| `panel_integ_ctrl` | L2 | 적분 타이밍 + X-ray 핸드셰이크 | 패널 공통 |
 | `line_buf_ram` | L2 | Block RAM 기반 라인 버퍼 (1라인 분량) | 픽셀수(컬럼수)만 파라미터 |
 | `data_out_mux` | L2 | 라인 데이터 → MCU 전송용 버스 정렬 | 공통 |
 | `mcu_data_if` | L1 | MCU 데이터 전송 인터페이스 (병렬/SPI 선택) | 공통 |
@@ -196,6 +200,10 @@ C7     X239AW1-102     NT39565D    AFE2256×N   대형 43×43 고화질
 | 010 | TRIGGERED | X-ray 외부 트리거 대기 후 획득 |
 | 011 | DARK_FRAME | Gate off 유지, AFE 리드아웃만 (offset 캘리브레이션용) |
 | 100 | RESET_ONLY | 패널 리셋만 실행 (초기화 전용) |
+
+**Note**: DARK_FRAME은 FSM 상태가 아닌 동작 모드(REG_MODE[2:0]=011)이다.
+DARK_FRAME 모드에서는 기존 FSM 상태를 그대로 사용하되, SCAN_LINE 상태에서 GATE_EN을 강제 0으로 유지하여
+Gate IC를 비활성화한 상태에서 AFE 리드아웃만 수행한다 (offset 캘리브레이션용).
 
 ---
 
@@ -300,6 +308,14 @@ TI (AFE2256):
   - 직렬 포맷: 16bit × 256ch, 4-lane MUX 출력 (ADC[3:0])
   - FCLK: 프레임 동기
 
+**AFE2256 (TI) 추가 인터페이스**:
+- 출력 (afe_afe2256): FCLK_P/M (프레임 클럭) — MCLK에서 생성, AFE2256 내부 타이밍 동기화용
+- 입력 (line_data_rx): FCLK_P/M 수신 — TI 모드에서 프레임 동기화 기준 클럭
+
+ADI (AD71124/AD71143)과 TI (AFE2256) LVDS 포맷 차이:
+- ADI: DCLKH(+)/DCLKL(-) + DOUT_A(+/-) + DOUT_B(+/-) — Self-clocked (ACLK 기반)
+- TI: DCLK_P/M + DOUT_P/M + FCLK_P/M — FCLK 추가로 프레임 경계 표시
+
 공통 수신 로직:
   1. LVDS → 싱글엔드 변환 (IBUFDS)
   2. 클럭 에지 동기화
@@ -321,7 +337,7 @@ TI (AFE2256):
 0x03  REG_COMBO         4      R/W  부품 조합 선택 (C1~C7 인코딩)
 0x04  REG_NROWS        12      R/W  유효 행 수 (최대 3072)
 0x05  REG_NCOLS        12      R/W  유효 열 수 (최대 3072)
-0x06  REG_TLINE        16      R/W  라인 타임 (단위: 10ns, 최소 22μs=2200)
+0x06  REG_TLINE        16      R/W  라인 타임 (단위: 10ns, AFE별 최소값: AD71124≥2200(22µs), AD71143≥6000(60µs), AFE2256≥5120(51.2µs))
 0x07  REG_TRESET       16      R/W  리셋 시퀀스 시간 (단위: 10ns)
 0x08  REG_TINTEG       24      R/W  적분 시간 (단위: 10ns)
 0x09  REG_TGATE_ON     12      R/W  Gate ON 펄스 폭 (단위: clk)
@@ -337,6 +353,7 @@ TI (AFE2256):
 0x13  REG_SYNC_DLY      8      R/W  AFE SYNC 딜레이 조정
 0x14  REG_LINE_IDX     12      R    현재 스캔 중인 행 인덱스 (읽기전용)
 0x15  REG_ERR_CODE      8      R    에러 코드
+0x16  REG_NRESET        8      R/W  리셋 시 더미 스캔 횟수 (기본값: 3)
 0x1F  REG_VERSION       8      R    FPGA 펌웨어 버전
 ```
 
@@ -363,6 +380,22 @@ fpga_top_c6.sv  →  gate_nt39565d + afe_ad711xx × N (SYNC 멀티-AFE)
 
 ---
 
+## 4.7 Clock Domain Crossing (CDC) 사양
+
+| 소스 도메인 | 대상 도메인 | 교차 유형 | CDC 전략 | 검증 방법 |
+|------------|-----------|----------|---------|----------|
+| ACLK | SYS_CLK | 제어 신호 | 2-FF 동기화 체인 | Assertion |
+| DCLK | SYS_CLK | 데이터 (16-bit) | Async FIFO (≥16 words) | SPEC-FPD-SIM-001 R-SIM-017 |
+| MCLK | SYS_CLK | SYNC 펄스 | MMCM 동기 생성 | Timing constraint |
+| Async Reset | 모든 도메인 | 리셋 | 2-FF reset synchronizer | R-SIM-039 |
+| MMCM_locked | SYS_CLK | 상태 | FF chain (2-stage) | TB-001-8 |
+
+**다중 AFE SYNC 스큐**: 브로드캐스트 분배 시 최대 ±31ns (±1 MCLK period @ 32MHz)
+
+**리셋 동기화**: 각 클럭 도메인에서 독립적인 2-FF synchronizer 필요
+
+---
+
 ## 5. 모듈 의존성 다이어그램
 
 ```
@@ -370,7 +403,11 @@ fpga_top_cX.sv
     ├── spi_slave_if.sv         [공통]
     ├── clk_rst_mgr.sv          [공통, 파라미터: ACLK_HZ/MCLK_HZ]
     ├── reg_bank.sv             [공통]
+    ├── power_sequencer.sv      [공통] — VGL→VGH 전원 시퀀싱 FSM
+    ├── emergency_shutdown.sv   [공통] — 과전압/과온도/PLL 장애 긴급 차단
     ├── panel_ctrl_fsm.sv       [공통]
+    │       ├── panel_reset_ctrl.sv  [패널 공통] — 더미 스캔 (REG_NRESET)
+    │       ├── panel_integ_ctrl.sv  [패널 공통] — 적분 타이밍 + X-ray 핸드셰이크
     │       ├── gate_ic_driver  [선택: gate_nv1047 / gate_nt39565d]
     │       │       └── row_scan_eng.sv  [공통]
     │       ├── afe_ctrl_if     [선택: afe_ad711xx / afe_afe2256]

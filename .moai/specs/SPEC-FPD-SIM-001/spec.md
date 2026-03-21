@@ -1,9 +1,9 @@
 ---
 id: SPEC-FPD-SIM-001
-version: "1.0.0"
+version: "1.1.0"
 status: draft
 created: "2026-03-19"
-updated: "2026-03-19"
+updated: "2026-03-20"
 author: drake
 priority: P1
 issue_number: 0
@@ -14,6 +14,7 @@ issue_number: 0
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0.0 | 2026-03-19 | drake | Initial SPEC creation via team-based deep research |
+| 1.1.0 | 2026-03-20 | drake | Cross-verification improvements: R-SIM-037~040, naming convention, timing constraints |
 
 ---
 
@@ -65,7 +66,7 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 
 ### Module 2: CSI-2 TX Verification
 
-**R-SIM-011 (Ubiquitous):** csi2_tx_model.cpp는 CSI-2 v1.3 준수 패킷 조립을 구현해야 한다: FS/FE 쇼트 패킷 (4 bytes) + RAW16 롱 패킷 (6-byte header + payload + 2-byte CRC) (SHALL).
+**R-SIM-011 (Ubiquitous):** csi2_tx_model.cpp는 CSI-2 v1.3 준수 패킷 조립을 구현해야 한다: FS/FE 쇼트 패킷 (4 bytes) + RAW16 롱 패킷 — Header [DI(1B, Data Type 0x2E) + WC(2B) + ECC(1B)] + Payload + CRC-16(2B), Virtual Channel = 0 (단일 카메라) (SHALL).
 
 **R-SIM-012 (Ubiquitous):** CRC-16은 MIPI CSI-2 사양에 따라 CCITT 다항식 (0x1021)을 사용하여 롱 패킷 페이로드에 대해 계산되어야 한다 (SHALL).
 
@@ -127,6 +128,16 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 
 **R-SIM-036 (Ubiquitous):** C++ 골든 모델 소스 코드의 라인 커버리지는 90%를 초과해야 한다 (SHALL). 측정 도구: gcov (GCC) 또는 llvm-cov (Clang).
 
+### Module 8: System-Level Requirements
+
+**R-SIM-037 (System-Level):** CSI-2 MIPI TX는 v1의 PRIMARY 데이터 출력이어야 하며 (SHALL), MCU 데이터 인터페이스는 legacy로 제어/설정용으로만 사용될 수 있다 (MAY).
+
+**R-SIM-038 (Event-Driven):** Radiography 모드에서 X_RAY_READY 타임아웃은 30초여야 한다 (SHALL). 이는 SPEC-002의 기본 5초 타임아웃과 별개이다.
+
+**R-SIM-039 (Ubiquitous):** CDC 모델은 리셋 동기화 (async reset assertion across clock domains), MMCM 락 동기화 (FF chain), 다중 AFE SYNC 도착 스큐 (max ±1 MCLK period = ±31ns at 32MHz)를 명시적으로 모델링해야 한다 (SHALL).
+
+**R-SIM-040 (Ubiquitous):** Safety 골든 모델 (ProtMonModel, PowerSeqModel, EmergencyShutdownModel)은 SPEC-FPD-008의 모든 보호 기능을 C++로 모델링해야 하며, 5초 타임아웃, 과전압/과온도 감지, VGL→VGH 전원 시퀀스(10ms 안정화, ≤5V/ms 슬루율)를 포함해야 한다 (SHALL).
+
 ### Non-Functional Requirements
 
 **NFR-SIM-001 (Regulatory):** 검증 방법론은 IEC 62220-1 준수 문서화를 지원해야 한다 (SHALL). 테스트 커버리지 보고서는 수용기준 ID (AC-001-x ~ AC-010-x)로 추적 가능해야 한다.
@@ -176,6 +187,15 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 
 ## 5. Technical Constraints
 
+### 5.1 Naming Convention
+
+C++ 골든 모델과 RTL 모듈 간 네이밍 규칙:
+- C++ 클래스: PascalCase (예: Csi2PacketModel, AfeAd711xxModel)
+- RTL 모듈: snake_case (예: csi2_packet_builder, afe_ad711xx)
+- C++ 파일명: PascalCase.h/.cpp (예: Csi2PacketModel.h)
+- RTL 파일명: snake_case.sv (예: csi2_packet_builder.sv)
+- 1:1 매핑: Csi2PacketModel ↔ csi2_packet_builder, AfeAd711xxModel ↔ afe_ad711xx
+
 ### 타이밍 파라미터 (데이터시트 기준)
 
 | Component | Parameter | Value | Source |
@@ -189,6 +209,12 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 | CSI-2 | Lane rate | 1.0-1.5 Gbps/lane | MIPI CSI-2 spec |
 | SYS_CLK | Frequency | 100 MHz | FPGA design |
 | ACLK | Frequency | 10-40 MHz (default 10) | MMCM |
+| Gate Settle Time | T_gate_settle | ≥2 us | Row 전환 시 크로스토크 방지 |
+| SYNC Skew (Multi-AFE) | Max skew | ±31 ns (±1 MCLK @ 32MHz) | 다중 AFE 동기화 |
+| tLINE per AFE type | AD71124≥2200, AD71143≥6000, AFE2256≥5120 | 10ns 단위 | REG_TLINE 설정 |
+| VGL Stabilization | Delay | 10 ms | Gate IC 전원 시퀀싱 |
+| VGH Stabilization | Delay | 10 ms | Gate IC 전원 시퀀싱 |
+| Max Slew Rate | Voltage | ≤5 V/ms | 전원 시퀀싱 |
 
 ### BRAM Budget (골든 모델 검증 대상)
 
@@ -241,6 +267,7 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Created: 2026-03-19
-Based on: Team research (researcher + analyst + architect)
+Updated: 2026-03-20
+Based on: Team research (researcher + analyst + architect) + cross-verification review

@@ -4,6 +4,16 @@
 
 ---
 
+## 0. Naming Convention
+
+- C++ classes: PascalCase (e.g., Csi2PacketModel)
+- RTL modules: snake_case (e.g., csi2_packet_builder)
+- C++ files: PascalCase.h/.cpp (e.g., Csi2PacketModel.h)
+- RTL files: snake_case.sv (e.g., csi2_packet_builder.sv)
+- 1:1 mapping maintained between C++ models and RTL modules
+
+---
+
 ## 1. C++ Golden Model Class Hierarchy
 
 ### Base Architecture
@@ -44,8 +54,8 @@ sim/
 │   │   ├── DataOutMuxModel.h/cpp      SPEC-007: Multi-AFE data alignment
 │   │   ├── McuDataIfModel.h/cpp      SPEC-007: MCU parallel data + IRQ (legacy)
 │   │   ├── ProtMonModel.h/cpp        SPEC-008: Protection monitor
-│   │   ├── EmergShutdownModel.h/cpp  SPEC-008: Emergency shutdown
 │   │   ├── PowerSeqModel.h/cpp       SPEC-008: Power sequencer (VGL→VGH)
+│   │   ├── EmergencyShutdownModel.h/cpp  SPEC-008: Emergency shutdown (R-SIM-040)
 │   │   └── RadiogModel.h/cpp         SPEC-010: Radiography sub-FSM
 │   │
 │   ├── generators/                    Test vector generators
@@ -103,6 +113,24 @@ sim/
 
 ```cpp
 // sim/golden_models/core/GoldenModelBase.h
+#include <variant>
+#include <vector>
+#include <map>
+#include <string>
+#include <cstdint>
+
+// Variable-width signal support: scalar (uint32_t) or vector (multi-channel data)
+using SignalValue = std::variant<uint32_t, std::vector<uint16_t>>;
+using SignalMap = std::map<std::string, SignalValue>;
+
+// Mismatch report structure for compare() results
+struct Mismatch {
+    uint64_t cycle;
+    std::string signal_name;
+    uint32_t expected;
+    uint32_t actual;
+};
+
 class GoldenModelBase {
 public:
     virtual ~GoldenModelBase() = default;
@@ -114,14 +142,14 @@ public:
     virtual void step() = 0;
 
     // Set input signals before step()
-    virtual void set_inputs(const std::map<std::string, uint32_t>& inputs) = 0;
+    virtual void set_inputs(const SignalMap& inputs) = 0;
 
     // Get output signals after step()
-    virtual std::map<std::string, uint32_t> get_outputs() const = 0;
+    virtual SignalMap get_outputs() const = 0;
 
     // Compare outputs against RTL (returns mismatch list)
     virtual std::vector<Mismatch> compare(
-        const std::map<std::string, uint32_t>& rtl_outputs) const = 0;
+        const SignalMap& rtl_outputs) const = 0;
 
     // Generate test vectors for this module
     virtual void generate_vectors(const std::string& output_dir) = 0;
@@ -576,5 +604,6 @@ sim/verilator/xilinx_behav/
 
 ---
 
-Version: 1.0.0
+Version: 1.1.0
 Created: 2026-03-19
+Updated: 2026-03-20
