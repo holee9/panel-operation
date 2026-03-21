@@ -28,7 +28,7 @@ module prot_mon
       err_flag <= 1'b0;
       force_gate_off <= 1'b0;
     end else begin
-      if ((fsm_state == ST_INTEGRATE) && xray_active) begin
+      if (((fsm_state == ST_INTEGRATE) || (fsm_state == ST_XRAY_ENABLE)) && xray_active) begin
         exposure_count <= exposure_count + 24'd1;
         if ((exposure_count + 24'd1) >= cfg_max_exposure) begin
           err_timeout <= 1'b1;

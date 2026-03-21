@@ -1,9 +1,9 @@
 ---
 id: SPEC-FPD-SIM-001
-version: "1.1.0"
+version: "1.2.0"
 status: draft
 created: "2026-03-19"
-updated: "2026-03-20"
+updated: "2026-03-21"
 author: drake
 priority: P1
 issue_number: 0
@@ -15,6 +15,7 @@ issue_number: 0
 |---------|------|--------|---------|
 | 1.0.0 | 2026-03-19 | drake | Initial SPEC creation via team-based deep research |
 | 1.1.0 | 2026-03-20 | drake | Cross-verification improvements: R-SIM-037~040, naming convention, timing constraints |
+| 1.2.0 | 2026-03-21 | drake | v3 교차검증 기반 12개 신규 요구사항 (R-SIM-041~052), NFR-SIM-005 추가, 리스크 보강 |
 
 ---
 
@@ -138,6 +139,32 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 
 **R-SIM-040 (Ubiquitous):** Safety 골든 모델 (ProtMonModel, PowerSeqModel, EmergencyShutdownModel)은 SPEC-FPD-008의 모든 보호 기능을 C++로 모델링해야 하며, 5초 타임아웃, 과전압/과온도 감지, VGL→VGH 전원 시퀀스(10ms 안정화, ≤5V/ms 슬루율)를 포함해야 한다 (SHALL).
 
+### Module 9: Combo-Specific Validation & Extended Models
+
+**R-SIM-041 (Ubiquitous):** 시스템은 선택된 AFE 타입에 대해 REG_TLINE >= TLINE_MIN을 검증해야 하며 (AD71124: 2200, AD71143: 6000, AFE2256: 5120), REG_NCOLS가 패널 geometry와 일치하는지 검증해야 한다 (C1-C3: 2048, C4-C5: 1664, C6-C7: 3072) (SHALL).
+
+**R-SIM-042 (State-Driven):** 시스템이 radiography TRIGGERED 모드에 진입한 동안, 제너레이터 핸드셰이크 시퀀스를 모델링해야 한다: PREP_REQUEST assertion → 200ms-2s 지연 → X_RAY_ENABLE assertion → X_RAY_ON 대기 → 적분 → X_RAY_OFF 감지, 30초 타임아웃 포함 (SHALL).
+
+**R-SIM-043 (Event-Driven):** X_RAY_OFF가 감지되었을 때, 시스템은 게이트 스캔 리드아웃 개시 전에 설정 가능한 TFT 전하 재분배 안정 기간 (cfg_tsettle, 기본 1-10ms)을 모델링해야 하며, 이는 AFE 동기화 지연과 별개이다 (SHALL).
+
+**R-SIM-044 (State-Driven):** cfg_combo가 C6 또는 C7을 선택한 동안, 시스템은 12개의 독립 LVDS 수신기 모델을 인스턴스화하고 3072채널 데이터 정렬을 AFE 간 손상 없이 검증해야 한다 (SHALL).
+
+**R-SIM-045 (Ubiquitous):** 시스템은 VPD 3단계 바이어스 전환 (역방향 -1.5V → 저 -0.2V → 순방향 +4V)을 시뮬레이션하는 forward_bias_ctrl 골든 모델을 제공해야 하며, 100kHz PWM 스위칭에서 30ms 최소 적용 시간을 포함해야 한다 (SHALL). (v2 준비)
+
+**R-SIM-046 (Ubiquitous):** NV1047 골든 모델은 SD1/SD2 비트별 직렬화를 시프트 레지스터로 시뮬레이션하고, CLK 생성을 ≤200kHz로, 설정 가능한 cfg_tgate_on으로 OE 펄스를, break-before-make 행 전환을 시뮬레이션해야 한다 (SHALL).
+
+**R-SIM-047 (Ubiquitous):** NT39565D 골든 모델은 듀얼-STV 펄스 생성 (STV1: 홀수 행, STV2: 짝수 행), 독립 OE1/OE2 좌우 채널 제어, CPV 구동 시프트, STVD 전파를 포함한 6-chip 캐스케이드를 시뮬레이션해야 한다 (SHALL).
+
+**R-SIM-048 (Ubiquitous):** LVDS 수신기 골든 모델은 afe_type_sel 파라미터에 기반하여 ADI 포맷 (DOUT_A/B + DCLKH/L, 3 차동 쌍)과 TI 포맷 (DOUT + DCLK_P/M + FCLK_P/M, 4 차동 쌍)을 판별해야 한다 (SHALL).
+
+**R-SIM-049 (State-Driven):** target_mode가 변경되었을 때, 전원 시퀀서 모델은 M0→M5 모드 전환 시퀀스를 VGL-before-VGH 순서 (≥5ms 레일 간 지연), 설정 가능한 안정화 시간 (기본 10ms), ≤5 V/ms 슬루율로 적용해야 한다 (SHALL).
+
+**R-SIM-050 (Event-Driven):** DARK_FRAME 모드가 N 프레임 (REG_DARK_CNT, 기본 2-4)을 완료했을 때, 모델은 픽셀별 평균을 계산하고 후속 감산을 위한 다크 오프셋 맵을 제공해야 한다 (SHALL).
+
+**R-SIM-051 (Ubiquitous):** Panel FSM 골든 모델은 설정 가능한 상태 커버리지를 지원해야 한다: v1 최소 (8 상태: IDLE ~ ERROR) 및 v1-extended (S1_POWER_CHECK, S3_PREP_WAIT, S5_XRAY_ENABLE, S7_SETTLE 안전 상태 추가) (SHALL).
+
+**R-SIM-052 (Ubiquitous):** AFE2256 골든 모델은 CIC 보상 시뮬레이션을 구현해야 한다: 256채널 프로파일 로딩, cfg_cic_profile (0-3)에 따른 전하 주입 보정, 동적 범위 검증 (목표: 50% → 92% 개선) (SHALL).
+
 ### Non-Functional Requirements
 
 **NFR-SIM-001 (Regulatory):** 검증 방법론은 IEC 62220-1 준수 문서화를 지원해야 한다 (SHALL). 테스트 커버리지 보고서는 수용기준 ID (AC-001-x ~ AC-010-x)로 추적 가능해야 한다.
@@ -147,6 +174,8 @@ SW-First 검증 프레임워크: C++ 골든 모델 시뮬레이터를 먼저 구
 **NFR-SIM-003 (Performance):** cocotb 테스트 스위트는 단일 SPEC 모듈당 30분 이내에 완료되어야 한다 (SHALL).
 
 **NFR-SIM-004 (Portability):** 골든 모델은 Windows (MSVC 2022, /std:c++17)와 Linux (GCC >= 11, -std=c++17) 양 플랫폼에서 플랫폼 특화 코드 없이 빌드되어야 한다 (SHALL).
+
+**NFR-SIM-005 (Coverage):** 골든 모델 기능 커버리지는 사양 정의 동작의 80%를 초과해야 하며, 요구사항-모델 추적 매트릭스로 측정해야 한다 (SHALL).
 
 ---
 
@@ -264,10 +293,37 @@ C++ 골든 모델과 RTL 모듈 간 네이밍 규칙:
 | RISK-4 | 전체 프레임 테스트 벡터 파일 크기 (8 MB/frame) | LOW | LOW | 대표 벡터만 커밋; 전체 프레임은 런타임 생성 |
 | RISK-5 | cocotb + xsim 통합 불안정 | MEDIUM | LOW | Verilator를 primary, xsim을 secondary로 사용 |
 | RISK-6 | 24-AFE 동시 시뮬레이션 성능 병목 | MEDIUM | MEDIUM | AFE 인스턴스 루프 최적화; 벡터화 활용 |
+| RISK-7 | 골든 모델 타이밍이 RTL과 발산 | HIGH | HIGH | 하드코딩 값 대신 파라미터화된 타이밍 입력 사용 |
+| RISK-8 | C6/C7 다중 AFE 시뮬레이션 성능 | MEDIUM | HIGH | 단위 테스트용 단일 AFE 모드 옵션 제공 |
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Created: 2026-03-19
-Updated: 2026-03-20
+Updated: 2026-03-21
 Based on: Team research (researcher + analyst + architect) + cross-verification review
+
+---
+
+## v1.2.0 Changes
+
+v3 교차검증 (35건 발견: CRITICAL 6, HIGH 11, MEDIUM 12, LOW 5)과 sim 갭 분석 (89개 미커버 동작, ~15% 테스트 커버리지) 기반으로 12개 신규 요구사항 추가.
+
+**추가 요구사항:** R-SIM-041 ~ R-SIM-052 (기능 요구사항 40 → 52개), NFR-SIM-005 (비기능 요구사항 4 → 5개)
+
+**주요 보강 영역:**
+- Combo별 타이밍/geometry 검증 (R-SIM-041)
+- 제너레이터 핸드셰이크 및 settle time 모델링 (R-SIM-042, R-SIM-043)
+- 다중 AFE 역직렬화기 배열 (R-SIM-044)
+- Forward bias 제어 모델 - v2 준비 (R-SIM-045)
+- Gate 드라이버 상세 모델: NV1047 시프트 레지스터 (R-SIM-046), NT39565D 듀얼-STV (R-SIM-047)
+- LVDS 수신기 포맷 판별 (R-SIM-048)
+- 전원 모드 전환 타이밍 (R-SIM-049)
+- 다크 프레임 평균화 파이프라인 (R-SIM-050)
+- Panel FSM 확장 상태 커버리지 (R-SIM-051)
+- CIC 보상 알고리즘 (R-SIM-052)
+- 기능 커버리지 80% 목표 (NFR-SIM-005)
+
+**리스크 추가:** RISK-7 (골든 모델 타이밍 발산), RISK-8 (다중 AFE 시뮬레이션 성능)
+
+**총계:** 52개 기능 요구사항 + 5개 비기능 요구사항

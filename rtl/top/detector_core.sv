@@ -3,7 +3,16 @@ module detector_core
   import fpd_params_pkg::*;
 #(
     parameter bit USE_AFE2256 = 1'b0,
-    parameter bit USE_NT_GATE = 1'b0
+    parameter bit USE_NT_GATE = 1'b0,
+    parameter bit FORCE_DEFAULT_COMBO = 1'b1,
+    parameter logic [2:0] DEFAULT_COMBO = COMBO_C1,
+    parameter int DEFAULT_NROWS = 2048,
+    parameter int DEFAULT_NCOLS = 2048,
+    parameter int DEFAULT_AFE_CHIPS = 1,
+    parameter int DEFAULT_CSI_LANES = 2,
+    parameter int DEFAULT_TLINE = 2200,
+    parameter int DEFAULT_GATE_CLK_PERIOD = 2200,
+    parameter int DEFAULT_NT_STV_PULSE = 100
 )(
     input  logic        clk_100mhz,
     input  logic        rst_n,
@@ -112,6 +121,63 @@ module detector_core
   power_mode_t target_power_mode, current_power_mode;
   logic shutdown_req, shutdown_force_gate;
   logic [7:0] shutdown_code;
+  logic [2:0] eff_combo;
+  logic [11:0] eff_nrows, eff_ncols;
+  logic [15:0] eff_tline;
+  logic [3:0] eff_afe_nchip;
+  logic [2:0] eff_lane_count;
+
+  localparam int LINE_RX_CHANNELS =
+      ((DEFAULT_NCOLS + DEFAULT_AFE_CHIPS - 1) / DEFAULT_AFE_CHIPS);
+
+  function automatic logic [11:0] combo_default_ncols(input logic [2:0] combo_id);
+    begin
+      case (combo_id)
+        COMBO_C4,
+        COMBO_C5: combo_default_ncols = 12'd1664;
+        COMBO_C6,
+        COMBO_C7: combo_default_ncols = 12'd3072;
+        default: combo_default_ncols = 12'd2048;
+      endcase
+    end
+  endfunction
+
+  function automatic logic [15:0] combo_min_tline(input logic [2:0] combo_id);
+    begin
+      case (combo_id)
+        COMBO_C2: combo_min_tline = 16'd6000;
+        COMBO_C3: combo_min_tline = 16'd5120;
+        default: combo_min_tline = 16'd2200;
+      endcase
+    end
+  endfunction
+
+  function automatic logic [2:0] lane_count_for_cfg(
+    input logic [3:0] afe_chips,
+    input logic [2:0] default_lanes
+  );
+    begin
+      if (afe_chips >= 4) begin
+        lane_count_for_cfg = 3'd4;
+      end else if (afe_chips >= 2) begin
+        lane_count_for_cfg = 3'd2;
+      end else begin
+        lane_count_for_cfg = default_lanes;
+      end
+    end
+  endfunction
+
+  always_comb begin
+    eff_combo = FORCE_DEFAULT_COMBO ? DEFAULT_COMBO : cfg_combo;
+    eff_nrows = FORCE_DEFAULT_COMBO ? DEFAULT_NROWS : cfg_nrows;
+    eff_ncols = FORCE_DEFAULT_COMBO ? DEFAULT_NCOLS :
+                ((cfg_ncols < combo_default_ncols(eff_combo)) ? combo_default_ncols(eff_combo) : cfg_ncols);
+    eff_tline = FORCE_DEFAULT_COMBO ? DEFAULT_TLINE :
+                ((cfg_tline < combo_min_tline(eff_combo)) ? combo_min_tline(eff_combo) : cfg_tline);
+    eff_afe_nchip = FORCE_DEFAULT_COMBO ? DEFAULT_AFE_CHIPS :
+                    ((cfg_afe_nchip == 4'd0) ? 4'd1 : cfg_afe_nchip);
+    eff_lane_count = lane_count_for_cfg(eff_afe_nchip, DEFAULT_CSI_LANES);
+  end
 
   spi_slave_if u_spi (
       .clk(clk_100mhz),
@@ -188,11 +254,11 @@ module detector_core
       .cfg_mode(op_mode_t'(cfg_mode)),
       .cfg_treset(cfg_treset),
       .cfg_tinteg(cfg_tinteg),
-      .cfg_nrows(cfg_nrows),
+      .cfg_nrows(eff_nrows),
       .cfg_nreset(cfg_nreset),
       .cfg_sync_dly(cfg_sync_dly),
       .cfg_tgate_settle(cfg_tgate_settle),
-      .radiography_mode(cfg_combo == COMBO_C6 || cfg_combo == COMBO_C7),
+      .radiography_mode(eff_combo == COMBO_C6 || eff_combo == COMBO_C7),
       .xray_prep_req(xray_prep_req),
       .xray_enable(xray_enable),
       .xray_on(xray_on),
@@ -221,7 +287,7 @@ module detector_core
       .scan_start(gate_start_scan),
       .scan_abort(ctrl_abort || shutdown_force_gate),
       .scan_dir(cfg_scan_dir),
-      .cfg_nrows(cfg_nrows),
+      .cfg_nrows(eff_nrows),
       .cfg_tgate_on(cfg_tgate_on),
       .cfg_tgate_settle(cfg_tgate_settle),
       .row_index(row_index),
@@ -241,7 +307,7 @@ module detector_core
           .gate_on_pulse(gate_on_pulse),
           .scan_dir(cfg_scan_dir),
           .reset_all(gate_reset_all || shutdown_force_gate),
-          .cfg_clk_period(cfg_tline),
+          .cfg_clk_period(DEFAULT_GATE_CLK_PERIOD),
           .cfg_gate_on(cfg_tgate_on),
           .cfg_gate_settle(cfg_tgate_settle),
           .cfg_mode(cfg_gate_sel),
@@ -275,8 +341,8 @@ module detector_core
           .scan_dir(cfg_scan_dir),
           .chip_sel(cfg_gate_sel),
           .mode_sel(cfg_gate_sel),
-          .cfg_cpv_period(cfg_tline),
-          .cfg_stv_pulse({8'h00, cfg_tgate_settle}),
+          .cfg_cpv_period(DEFAULT_GATE_CLK_PERIOD),
+          .cfg_stv_pulse(DEFAULT_NT_STV_PULSE),
           .cfg_gate_on(cfg_tgate_on),
           .nt_stv1l(nt_stv1l),
           .nt_stv2l(nt_stv2l),
@@ -312,11 +378,11 @@ module detector_core
           .afe_start(afe_start),
           .config_req(afe_config_req),
           .line_idx(sts_line_idx),
-          .cfg_tline(cfg_tline),
+          .cfg_tline(eff_tline),
           .cfg_ifs(cfg_afe_ifs),
           .cfg_lpf(cfg_afe_lpf),
           .cfg_pmode(cfg_afe_pmode),
-          .cfg_nchip(cfg_afe_nchip),
+          .cfg_nchip(eff_afe_nchip),
           .afe_aclk(afe_aclk),
           .afe_reset(afe_reset),
           .afe_sync(afe_sync),
@@ -342,8 +408,8 @@ module detector_core
           .cfg_cic_profile(cfg_cic_profile),
           .cfg_pipeline_en(cfg_pipeline_en),
           .cfg_tp_sel(cfg_tp_sel),
-          .cfg_nchip(cfg_afe_nchip),
-          .cfg_tline(cfg_tline),
+          .cfg_nchip(eff_afe_nchip),
+          .cfg_tline(eff_tline),
           .afe_mclk(afe_mclk),
           .afe_sync(afe_sync),
           .afe_tp_sel(afe_tp_sel),
@@ -363,7 +429,7 @@ module detector_core
 
   line_data_rx #(
       .ADI_MODE(!USE_AFE2256),
-      .N_CHANNELS(256)
+      .N_CHANNELS(LINE_RX_CHANNELS)
   ) u_line_rx (
       .clk(clk_sys_out),
       .rst_n(rst_sync_n),
@@ -400,11 +466,11 @@ module detector_core
         rd_en <= 1'b1;
         afe_line_valid <= 1'b1;
         sts_line_rdy <= 1'b1;
-        if (sts_line_idx + 12'd1 >= cfg_nrows) begin
+        if (sts_line_idx + 12'd1 >= eff_nrows) begin
           frame_done_int <= 1'b1;
         end
       end else if (rd_en) begin
-        if (rd_addr + 12'd1 >= cfg_ncols) begin
+        if (rd_addr + 12'd1 >= eff_ncols) begin
           rd_en <= 1'b0;
           rd_addr <= '0;
         end else begin
@@ -415,8 +481,8 @@ module detector_core
   end
 
   line_buf_ram #(
-      .N_COLS(2048),
-      .N_AFES(1)
+      .N_COLS(MAX_COLS),
+      .N_AFES(DEFAULT_AFE_CHIPS)
   ) u_line_buf (
       .wr_clk(afe_dclk),
       .rd_clk(clk_sys_out),
@@ -436,7 +502,7 @@ module detector_core
   data_out_mux u_data_out_mux (
       .clk(clk_sys_out),
       .rst_n(rst_sync_n),
-      .cfg_ncols(cfg_ncols),
+      .cfg_ncols(eff_ncols),
       .line_pixel_data(rd_pixel_data),
       .line_data_valid(rd_en),
       .line_pixel_idx(rd_addr),
@@ -485,7 +551,7 @@ module detector_core
   csi2_lane_dist u_csi_lane (
       .clk(clk_sys_out),
       .rst_n(rst_sync_n),
-      .lane_count(USE_NT_GATE ? 3'd4 : 3'd2),
+      .lane_count(eff_lane_count),
       .packet_byte(packet_byte),
       .packet_valid(packet_valid),
       .packet_last(packet_last),

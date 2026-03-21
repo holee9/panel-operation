@@ -44,12 +44,21 @@ module gate_nt39565d
   logic [15:0] cpv_count;
   logic [15:0] stv_count;
   logic        cpv_toggle;
+  logic        left_bank_active;
+  logic        right_bank_active;
+  logic        stv_phase_sel;
 
   function automatic logic [15:0] safe_period(input logic [15:0] value);
     begin
       safe_period = (value < 16'd500) ? 16'd500 : value;
     end
   endfunction
+
+  always_comb begin
+    stv_phase_sel = scan_dir ? ~row_index[0] : row_index[0];
+    left_bank_active = (chip_sel == 2'b00) || (chip_sel == 2'b10) || (scan_dir == 1'b0);
+    right_bank_active = (chip_sel == 2'b01) || (chip_sel == 2'b10) || (scan_dir == 1'b1);
+  end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -82,10 +91,10 @@ module gate_nt39565d
 
         if (stv_count < cfg_stv_pulse) begin
           stv_count <= stv_count + 16'd1;
-          nt_stv1l <= (row_index[0] == 1'b0);
-          nt_stv2l <= (row_index[0] == 1'b1);
-          nt_stv1r <= (chip_sel == 2'b01);
-          nt_stv2r <= (chip_sel == 2'b10);
+          nt_stv1l <= left_bank_active && !stv_phase_sel;
+          nt_stv2l <= left_bank_active && stv_phase_sel;
+          nt_stv1r <= right_bank_active && !stv_phase_sel;
+          nt_stv2r <= right_bank_active && stv_phase_sel;
         end else begin
           nt_stv1l <= 1'b0;
           nt_stv2l <= 1'b0;
@@ -104,11 +113,12 @@ module gate_nt39565d
 
       nt_cpv_l <= gate_on_pulse ? cpv_toggle : 1'b0;
       nt_cpv_r <= gate_on_pulse ? cpv_toggle : 1'b0;
-      nt_oe1_l <= gate_on_pulse && !row_index[0];
-      nt_oe1_r <= gate_on_pulse && !row_index[0];
-      nt_oe2_l <= gate_on_pulse && row_index[0];
-      nt_oe2_r <= gate_on_pulse && row_index[0];
-      cascade_complete <= cascade_stv_return && (mode_sel != 2'b00);
+      nt_oe1_l <= gate_on_pulse && left_bank_active && !row_index[0];
+      nt_oe1_r <= gate_on_pulse && right_bank_active && !row_index[0];
+      nt_oe2_l <= gate_on_pulse && left_bank_active && row_index[0];
+      nt_oe2_r <= gate_on_pulse && right_bank_active && row_index[0];
+      cascade_complete <= gate_on_pulse && cascade_stv_return &&
+                          ((chip_sel == 2'b10) || (mode_sel != 2'b00));
       row_done <= gate_on_prev && !gate_on_pulse;
       gate_on_prev <= gate_on_pulse;
     end

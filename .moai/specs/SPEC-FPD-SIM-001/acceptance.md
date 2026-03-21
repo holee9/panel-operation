@@ -276,6 +276,110 @@
 
 ---
 
+## AC-SIM-035: Combo-Specific TLINE_MIN Enforcement (R-SIM-041)
+
+**Given** REG_COMBO = C2 (AD71143) AND REG_TLINE = 2200 (22 us)으로 설정된 상태에서
+**When** Panel FSM이 SCAN_LINE 상태에 진입하면
+**Then** 유효 tLINE이 TLINE_MIN = 6000 (60 us)으로 클램핑되어야 하며, 골든 모델 출력이 RTL의 TLINE_MIN 적용 동작과 일치해야 한다
+
+---
+
+## AC-SIM-036: Combo-Specific NCOLS Validation (R-SIM-041)
+
+**Given** REG_COMBO = C4 (R1714)으로 설정된 상태에서
+**When** Register bank이 기본값을 초기화하면
+**Then** REG_NCOLS가 1664 (2048이 아닌)로 기본 설정되어야 하며, C6/C7의 경우 3072로 기본 설정되어야 한다
+
+---
+
+## AC-SIM-037: Generator Handshake Timing (R-SIM-042)
+
+**Given** REG_MODE = TRIGGERED (radiography)로 설정된 상태에서
+**When** FSM이 적분 시퀀스에 진입하면
+**Then** PREP_REQUEST → X_RAY_ENABLE 지연이 200ms~2s 범위여야 하고, X_RAY_READY 타임아웃이 30s여야 하며, 골든 모델이 RTL과 동일하게 핸드셰이크 상태 전이를 추적해야 한다
+
+---
+
+## AC-SIM-038: Settle Time Verification (R-SIM-043)
+
+**Given** X_RAY_OFF가 적분 중 감지된 상태에서
+**When** FSM이 INTEGRATE에서 readout으로 전이하면
+**Then** Gate scan 시작 전에 설정 가능한 settle 지연 (cfg_tsettle, 기본값 100000 cycles = 100 MHz에서 1 ms)이 경과해야 하며, 골든 모델도 이 지연을 동일하게 적용해야 한다
+
+---
+
+## AC-SIM-039: Multi-AFE Data Path (R-SIM-044)
+
+**Given** cfg_combo = C6, cfg_afe_nchip = 12로 설정된 상태에서
+**When** Full-frame readout (3072 rows x 3072 cols)이 수행되면
+**Then** 12개 LVDS 수신기 인스턴스가 3072 pixels/line을 생성해야 하며 AFE 간 데이터 오염이 없어야 하고, line buffer가 3072 pixels 전체를 저장해야 한다
+
+---
+
+## AC-SIM-040: Gate NV1047 Shift Register (R-SIM-046)
+
+**Given** NV1047 골든 모델이 row_index = 150으로 설정된 상태에서
+**When** gate_on_pulse가 assert되면
+**Then** SD1/SD2가 CLK 펄스 (<=200 kHz)를 통해 row address를 비트 단위로 직렬화해야 하고, OE가 cfg_tgate_on cycles 동안 assert되어야 하며, break-before-make 간격이 >=2 us여야 한다
+
+---
+
+## AC-SIM-041: Gate NT39565D Dual-STV (R-SIM-047)
+
+**Given** NT39565D 모델이 6-chip 캐스케이드로 구성된 상태에서
+**When** Gate scan이 row 0→540 (chip #0)에서 실행되면
+**Then** STV1이 홀수 행, STV2가 짝수 행을 선택해야 하고, OE1_L/OE1_R이 좌/우를 독립 제어해야 하며, STVD 전파가 chip[0]에서 chip[5]까지 6 CPV cycles 이내에 완료되어야 한다
+
+---
+
+## AC-SIM-042: LVDS Format Discrimination (R-SIM-048)
+
+**Given** afe_type_sel = ADI (AD71124)로 설정된 상태에서
+**When** LVDS 수신기 모델이 데이터를 처리하면
+**Then** 모델이 3-pair 포맷 (DOUT_A/B + DCLK)을 사용해야 하며, afe_type_sel = TI (AFE2256)인 경우 4-pair 포맷 (DOUT + DCLK + FCLK)을 사용해야 한다
+
+---
+
+## AC-SIM-043: Power Mode VGL→VGH Delay (R-SIM-049)
+
+**Given** Power sequencer가 PWR_ACTIVE 모드를 목표로 하는 상태에서
+**When** VGL enable이 assert되면
+**Then** VGH enable은 VGL_STABLE AND >=5 ms 지연이 경과할 때까지 assert되지 않아야 하며, slew rate가 <=5 V/ms여야 한다. 골든 모델도 동일한 시퀀싱을 적용해야 한다
+
+---
+
+## AC-SIM-044: Dark Frame Averaging (R-SIM-050)
+
+**Given** REG_MODE = DARK_FRAME, REG_DARK_CNT = 4로 설정된 상태에서
+**When** 4개 dark frame이 완료되면
+**Then** 픽셀별 평균이 계산되어야 하고 (sum/4), dark offset map이 감산용으로 가용해야 한다
+
+---
+
+## AC-SIM-045: Panel FSM Extended States (R-SIM-051)
+
+**Given** v1-extended FSM 모드가 활성화된 상태에서
+**When** STATIC 모드 acquisition 시퀀스가 실행되면
+**Then** FSM이 core 8 states에 추가로 S1_POWER_CHECK → S3_PREP_WAIT → S5_XRAY_ENABLE → S7_SETTLE 상태를 순차 전이해야 하며, 골든 모델이 RTL과 state-by-state로 일치해야 한다
+
+---
+
+## AC-SIM-046: CIC Compensation (R-SIM-052)
+
+**Given** cfg_combo = C3 (AFE2256), cfg_cic_en = 1, cfg_cic_profile = 0으로 설정된 상태에서
+**When** AFE readout이 256 channels를 완료하면
+**Then** CIC 보상된 출력이 비-CIC 출력과 차이가 있어야 하며, dynamic range 개선이 측정 가능해야 한다 (>=40% 개선 메트릭)
+
+---
+
+## AC-SIM-047: Golden Model Timing Parameterization (R-SIM-051)
+
+**Given** PanelFsmModel이 cfg_treset=100, cfg_tinteg=1000으로 초기화된 상태에서
+**When** FSM이 RESET→INTEGRATE 시퀀스를 실행하면
+**Then** RESET 상태가 정확히 cfg_treset cycles (하드코딩된 4가 아닌) 동안 유지되어야 하고, INTEGRATE가 cfg_tinteg cycles (하드코딩된 2-30이 아닌) 동안 유지되어야 한다. 골든 모델에 하드코딩된 타이밍 상수가 존재하지 않아야 한다
+
+---
+
 ## Edge Case Scenarios
 
 ### EC-SIM-001: SPI Contention
@@ -302,6 +406,24 @@
 **When** 전체 프레임 SPI 설정이 전송되면
 **Then** 마지막 AFE (#23)의 설정이 올바르게 적용되어야 하며, 전체 전송이 SPI CLK <= ACLK/4 조건을 충족해야 한다
 
+### EC-SIM-006: Multi-AFE SYNC Skew
+
+**Given** 12개 AFE가 동시 동작하고 MCLK skew가 +-31 ns 범위에서 발생하는 상태에서
+**When** SYNC 신호가 모든 AFE에 브로드캐스트되면
+**Then** skew에도 불구하고 데이터 정렬이 유지되어야 하며, 최악 조건에서도 데이터 손실이 없어야 한다
+
+### EC-SIM-007: VGL-without-VGH Latch-Up Detection
+
+**Given** Power sequencer에서 VGL이 활성화된 상태에서 VGH가 비활성 상태일 때
+**When** VGH 없이 VGL만 일정 시간 이상 유지되면
+**Then** seq_error 플래그가 assert되어야 하며, latch-up 방지를 위해 emergency shutdown이 트리거되어야 한다
+
+### EC-SIM-008: TLINE Below Minimum with Combo Mismatch
+
+**Given** REG_COMBO = C2 (AD71143, TLINE_MIN=6000)이지만 REG_TLINE이 기본값 2200으로 설정된 상태에서
+**When** Panel FSM이 readout을 시작하면
+**Then** TLINE_MIN 클램핑이 적용되어 실제 tLINE=6000으로 동작해야 하며, 에러 플래그 없이 정상 동작해야 한다
+
 ### EC-SIM-005: CSI-2 LP Mode Transition
 
 **Given** Csi2LaneDistModel이 프레임 전송을 완료한 상태에서
@@ -315,19 +437,19 @@
 | SPEC | Golden Model AC | cocotb AC | Verilator AC | Total |
 |------|----------------|-----------|--------------|-------|
 | SPEC-FPD-001 | AC-SIM-001 | AC-SIM-017 | - | 2 |
-| SPEC-FPD-002 | AC-SIM-002, 003, **025**, **031**, **032** | - | - | 5 |
-| SPEC-FPD-003 | AC-SIM-004, 005 | - | - | 2 |
-| SPEC-FPD-004 | AC-SIM-022 | - | - | 1 |
-| SPEC-FPD-005 | AC-SIM-006, 007, **030** | - | - | 3 |
-| SPEC-FPD-006 | AC-SIM-008, **026**, **029** | - | - | 3 |
+| SPEC-FPD-002 | AC-SIM-002, 003, **025**, **031**, **032**, **035**, **036**, **045**, **047** | - | - | 9 |
+| SPEC-FPD-003 | AC-SIM-004, 005, **040** | - | - | 3 |
+| SPEC-FPD-004 | AC-SIM-022, **041** | - | - | 2 |
+| SPEC-FPD-005 | AC-SIM-006, 007, **030**, **042** | - | - | 4 |
+| SPEC-FPD-006 | AC-SIM-008, **026**, **029**, **046** | - | - | 4 |
 | SPEC-FPD-007 | AC-SIM-009~014 | AC-SIM-011, 012 | AC-SIM-018 | 9 |
-| SPEC-FPD-007+009 | AC-SIM-021 | - | - | 1 |
-| SPEC-FPD-008 | AC-SIM-015, 016 | - | - | 2 |
-| SPEC-FPD-010 | **AC-SIM-023, 024** | - | - | 2 |
+| SPEC-FPD-007+009 | AC-SIM-021, **039** | - | - | 2 |
+| SPEC-FPD-008 | AC-SIM-015, 016, **043** | - | - | 3 |
+| SPEC-FPD-010 | **AC-SIM-023, 024**, **037**, **038**, **044** | - | - | 5 |
 | CDC | **AC-SIM-033** | - | - | 1 |
 | Build/CI | - | - | AC-SIM-019, 020 | 2 |
 | Infrastructure | **AC-SIM-027, 028**, **034** | - | - | 3 |
-| **Total** | **28** | **3** | **3** | **34** |
+| **Total** | **41** | **3** | **3** | **47** |
 
 ---
 
@@ -369,9 +491,22 @@
 | AC-SIM-032 | R-SIM-003 | Panel FSM | REG_LINE_IDX update |
 | AC-SIM-033 | R-SIM-039 | CDC | Reset synchronization |
 | AC-SIM-034 | R-SIM-029 | Infrastructure | Mismatch struct |
+| AC-SIM-035 | R-SIM-041 | Panel FSM | Combo-specific TLINE_MIN enforcement |
+| AC-SIM-036 | R-SIM-041 | Register Bank | Combo-specific NCOLS default |
+| AC-SIM-037 | R-SIM-042 | Panel FSM | Generator handshake timing |
+| AC-SIM-038 | R-SIM-043 | Panel FSM | Settle time verification |
+| AC-SIM-039 | R-SIM-044 | Multi-AFE | Multi-AFE data path (12 LVDS) |
+| AC-SIM-040 | R-SIM-046 | Gate NV1047 | Shift register serialization |
+| AC-SIM-041 | R-SIM-047 | Gate NT39565D | Dual-STV odd/even row control |
+| AC-SIM-042 | R-SIM-048 | LVDS Receiver | ADI vs TI format discrimination |
+| AC-SIM-043 | R-SIM-049 | Power Seq | VGL→VGH delay enforcement |
+| AC-SIM-044 | R-SIM-050 | Panel FSM | Dark frame averaging |
+| AC-SIM-045 | R-SIM-051 | Panel FSM | Extended FSM states |
+| AC-SIM-046 | R-SIM-052 | AFE AFE2256 | CIC compensation validation |
+| AC-SIM-047 | R-SIM-051 | Panel FSM | Timing parameterization (no hardcode) |
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Created: 2026-03-19
-Updated: 2026-03-20
+Updated: 2026-03-21

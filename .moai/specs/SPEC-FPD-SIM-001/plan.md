@@ -417,6 +417,10 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 | 2.2 | PanelResetModel + PanelIntegModel | test_panel_fsm.py (확장) | 2일 |
 | 2.3 | ProtMonModel + EmergShutdownModel | test_safety.py | 2일 |
 | 2.4 | PowerSeqModel (VGL→VGH) | test_safety.py (확장) | 1일 |
+| 2.5 | PanelFsmModel v1-extended states (S1_POWER_CHECK, S3_PREP_WAIT, S5_XRAY_ENABLE, S7_SETTLE) | test_panel_fsm.py (확장) | 2일 |
+| 2.6 | Generator handshake sub-FSM 모델 (HS_IDLE → HS_PREP_ACK → HS_WAIT_XRAY → HS_INTEGRATING) | test_panel_fsm.py (확장) | 1일 |
+| 2.7 | PanelFsmModel 타이밍 파라미터화 (하드코딩된 4/2/5/30 사이클 상수를 cfg_treset/cfg_tinteg 레지스터 입력으로 교체) | test_fsm_model.cpp (확장) | 1일 |
+| 2.8 | PowerSeqModel VGL→VGH inter-rail delay enforcement (≥5ms 설정 가능 딜레이 카운터) | test_safety.py (확장) | 1일 |
 
 ### Phase 3: Gate IC (SPEC-003 + 004)
 
@@ -425,8 +429,9 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 | Step | Golden Model | cocotb Test | Duration |
 |------|-------------|-------------|----------|
 | 3.1 | RowScanModel (공통 엔진) | - | 1일 |
-| 3.2 | GateNv1047Model (SD1/CLK/OE) | test_gate_nv1047.py | 2일 |
-| 3.3 | GateNt39565dModel (dual-STV, 6-chip cascade) | test_gate_nt39565d.py | 3일 |
+| 3.2 | GateNv1047Model (SD1/SD2 shift register 직렬화 + CLK ≤200kHz divider + break-before-make 검증) | test_gate_nv1047.py | 2일 |
+| 3.3 | GateNt39565dModel (dual-STV: STV1 odd/STV2 even, 독립 OE1/OE2 left/right 제어, 6-chip STVD cascade 전파) | test_gate_nt39565d.py | 3일 |
+| 3.4 | Combo별 타이밍 검증 테스트 벡터 (C1-C7 TLINE_MIN enforcement, NCOLS 매칭) | test_gate_nv1047.py + test_gate_nt39565d.py | 1일 |
 
 **NT39565D 6-Chip Cascade 검증 상세:**
 
@@ -456,6 +461,8 @@ void GateNt39565dModel::step_cascade() {
 | 4.1 | AfeSpiMasterModel (daisy-chain) | - | 1일 |
 | 4.2 | AfeAd711xxModel (ACLK, SYNC, IFS) | test_afe_ad711xx.py | 3일 |
 | 4.3 | AfeAfe2256Model (MCLK, CIC, pipeline) | test_afe_afe2256.py | 3일 |
+| 4.4 | AfeAfe2256 CIC 보상 알고리즘 모델 (256ch 프로파일 로딩, charge injection 보정, dynamic range 메트릭) | test_afe_afe2256.py (확장) | 2일 |
+| 4.5 | TLINE_MIN enforcement — 양 AFE 모델 (AD71124: 2200, AD71143: 6000, AFE2256: 5120) | test_afe_ad711xx.py + test_afe_afe2256.py | 1일 |
 
 **AFE2256 Pipeline Latency 모델 상세:**
 
@@ -482,6 +489,8 @@ struct PipelineState {
 | 5.2 | LineBufModel (ping-pong + CDC) | test_line_buf.py | 3일 |
 | 5.3 | Csi2PacketModel (FS/FE + RAW16 + CRC) | test_csi2_tx.py | 3일 |
 | 5.4 | Csi2LaneDistModel (2/4-lane) | test_csi2_tx.py (확장) | 2일 |
+| 5.5 | Multi-AFE deserializer array 모델 (C6/C7용 12 인스턴스, 3072ch 정렬 검증) | test_lvds_rx.py (확장) | 3일 |
+| 5.6 | Dark frame averaging pipeline 모델 (N-frame 누적, per-pixel offset map) | test_integration.py (확장) | 2일 |
 
 ### Phase 6: Integration (SPEC-009 + 010)
 
@@ -491,18 +500,54 @@ struct PipelineState {
 | 6.2 | RadiogModel (정지영상 서브-FSM) | test_radiography.py | 2일 |
 | 6.3 | C1/C3/C6 조합별 Verilator 검증 | compare_integration.cpp | 3일 |
 
+### Phase 7: v2-Prep Models (신규)
+
+| Step | Golden Model | cocotb Test | Duration |
+|------|-------------|-------------|----------|
+| 7.1 | ForwardBiasCtrlModel (VPD 3-stage bias, 30ms PWM at 100kHz) | test_safety.py (확장) | 2일 |
+| 7.2 | SettleTimeModel (설정 가능 1-10ms TFT charge redistribution delay) | test_panel_fsm.py (확장) | 1일 |
+| 7.3 | Calibration pipeline stubs (offset subtraction, gain multiplication 인터페이스) | test_integration.py (확장) | 2일 |
+
 ### 총 예상 규모
 
 | Category | Files | LOC (estimated) |
 |----------|-------|-----------------|
 | Core framework | 10 | ~800 |
-| Golden models | 40 (20 .h + 20 .cpp) | ~4,000 |
-| Vector generators | 6 | ~600 |
-| C++ unit tests | 6 | ~1,200 |
-| cocotb tests | 14 | ~2,800 |
-| Verilator harness | 6 | ~800 |
+| Golden models | 50 (25 .h + 25 .cpp) | ~5,500 |
+| Vector generators | 8 | ~800 |
+| C++ unit tests | 10 | ~1,800 |
+| cocotb tests | 16 | ~3,400 |
+| Verilator harness | 8 | ~1,000 |
 | Build system | 3 (CMake + Makefiles) | ~200 |
-| **Total** | **~85 files** | **~10,400 LOC** |
+| **Total** | **~105 files** | **~13,500 LOC** |
+
+### v3 교차검증 통합 우선순위
+
+**Priority 1 (Blocking -- RTL 검증 전 반드시 수정):**
+
+- PanelFsmModel 타이밍 파라미터화 (하드코딩된 사이클 상수 제거)
+- RowScanModel cfg_tgate_on/settle 타이밍 (1-cycle 전이 제거)
+- AfeAd711xxModel/AfeAfe2256Model TLINE_MIN enforcement
+- Combo별 기본 타이밍 검증 (C1-C7)
+
+**Priority 2 (High -- gate driver 검증):**
+
+- GateNv1047Model shift register 구현 (SD1/SD2 직렬화)
+- GateNt39565dModel dual-STV + OE1/OE2 split
+- LVDS 포맷 판별 모델 (ADI 3-pair vs TI 4-pair)
+
+**Priority 3 (Medium -- 확장 시뮬레이션):**
+
+- Panel FSM v1-extended states (S1/S3/S5/S7)
+- Generator handshake sub-FSM
+- Multi-AFE array (C6/C7 12 인스턴스)
+- Dark frame averaging pipeline
+
+**Priority 4 (v2 Prep):**
+
+- Forward Bias control 모델
+- CIC 보상 알고리즘
+- Correction pipeline stubs
 
 ---
 
@@ -537,6 +582,26 @@ jobs:
     steps:
       - cmake --build . --target verilator_sim
       - ./compare_spi --vectors=test_vectors/spec001/
+
+  combo-timing-validation:
+    needs: golden-model-tests
+    steps:
+      - cmake --build . --target golden_tests
+      - ctest -R "combo_timing" --output-junit combo-timing.xml
+      # C1-C7 TLINE_MIN per combo 검증
+
+  multi-afe-stress:
+    needs: test-vector-generation
+    steps:
+      - cmake --build . --target gen_afe_vectors
+      - ./gen_afe_vectors --combo=C6 --afe-count=12 --stress
+      # 12-AFE 동시 시뮬레이션 (C6 구성)
+
+  golden-model-timing:
+    needs: golden-model-tests
+    steps:
+      - ctest -R "timing_param" --output-junit timing-param.xml
+      # 모든 모델에서 하드코딩된 타이밍 없음 검증
 ```
 
 ---
@@ -604,6 +669,59 @@ sim/verilator/xilinx_behav/
 
 ---
 
-Version: 1.1.0
+## 9. v1.2.0 변경 사항
+
+v3 교차검증에서 발견된 35건의 잔여 이슈와 SIM gap analysis의 89건 미커버 동작(테스트 커버리지 ~15%)을 반영하여 다음 사항을 업데이트:
+
+### 추가된 서브태스크
+
+- **Phase 2 (FSM + Safety)**: 4건 추가 (2.5~2.8)
+  - v1-extended FSM states (S1/S3/S5/S7), Generator handshake sub-FSM, 타이밍 파라미터화, VGL→VGH inter-rail delay
+  - Phase 총 일수: 8일 → 13일
+
+- **Phase 3 (Gate IC)**: 1건 추가 (3.4), 기존 상세화 (3.2, 3.3)
+  - Combo별 TLINE_MIN enforcement 테스트 벡터
+  - Phase 총 일수: 6일 → 7일
+
+- **Phase 4 (AFE Controller)**: 2건 추가 (4.4~4.5)
+  - CIC 보상 알고리즘 모델, TLINE_MIN enforcement
+  - Phase 총 일수: 7일 → 10일
+
+- **Phase 5 (Data Path)**: 2건 추가 (5.5~5.6)
+  - Multi-AFE deserializer array (12 인스턴스), Dark frame averaging pipeline
+  - Phase 총 일수: 10일 → 15일
+
+- **Phase 7 (신규)**: v2-Prep Models — 3건 (7.1~7.3)
+  - ForwardBiasCtrlModel, SettleTimeModel, Calibration pipeline stubs
+  - Phase 총 일수: 5일 (신규)
+
+### 구현 규모 변경
+
+| 항목 | v1.1.0 | v1.2.0 |
+|------|--------|--------|
+| 총 Phase 수 | 6 | 7 |
+| 총 예상 일수 | ~50일 | ~65일 |
+| Golden model 클래스 | 25 | 30 |
+| 총 파일 수 | ~85 | ~105 |
+| 총 LOC | ~10,400 | ~13,500 |
+
+### 신규 CI/CD 테스트 작업
+
+- `combo-timing-validation`: Combo별 TLINE_MIN 검증
+- `multi-afe-stress`: 12-AFE 동시 시뮬레이션 (C6 구성)
+- `golden-model-timing`: 모든 모델에서 하드코딩된 타이밍 없음 검증
+
+### 교차검증 우선순위 체계
+
+4단계 우선순위 체계 도입 (Priority 1: Blocking → Priority 4: v2 Prep)으로 RTL 검증 차단 이슈부터 순차적으로 해결하도록 구조화.
+
+### 관련 SPEC 변경
+
+- 신규 요구사항: R-SIM-041~052 (spec.md에 추가)
+- 신규 수락 기준: AC-SIM-035~047 (acceptance.md에 추가)
+
+---
+
+Version: 1.2.0
 Created: 2026-03-19
-Updated: 2026-03-20
+Updated: 2026-03-21

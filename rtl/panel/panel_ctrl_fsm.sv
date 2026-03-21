@@ -1,7 +1,6 @@
-// panel_ctrl_fsm.sv — Main panel driving FSM
-// States: IDLE → RESET → INTEGRATE → READOUT_INIT → SCAN_LINE → READOUT_DONE → DONE
-// Modes: STATIC, CONTINUOUS, TRIGGERED, DARK_FRAME, RESET_ONLY
-// All timing from reg_bank (no hardcoded values)
+// panel_ctrl_fsm.sv - Main panel driving FSM
+// Splits radiography preparation, exposure enable, and post-read settle into
+// separate states so the gate/AFE path can be validated more faithfully.
 module panel_ctrl_fsm
   import fpd_types_pkg::*;
   import fpd_params_pkg::*;
@@ -22,10 +21,10 @@ module panel_ctrl_fsm
     input  logic        radiography_mode,
 
     // X-ray generator interface
-    input  logic        xray_prep_req,   // Generator ready
-    output logic        xray_enable,     // Detector ready for exposure
-    input  logic        xray_on,         // Exposure active
-    input  logic        xray_off,        // Exposure complete
+    input  logic        xray_prep_req,
+    output logic        xray_enable,
+    input  logic        xray_on,
+    input  logic        xray_off,
 
     // Gate IC driver control
     output logic        gate_start_scan,
@@ -108,9 +107,15 @@ module panel_ctrl_fsm
             row_index <= '0;
             sts_line_idx <= '0;
             if (ctrl_start) begin
-              fsm_state <= ST_RESET;
+              fsm_state <= ST_POWER_CHECK;
               sts_busy <= 1'b1;
             end
+          end
+
+          ST_POWER_CHECK: begin
+            timer_count <= '0;
+            xray_wait_count <= '0;
+            fsm_state <= ST_RESET;
           end
 
           ST_RESET: begin
@@ -120,37 +125,53 @@ module panel_ctrl_fsm
               timer_count <= '0;
               if (cfg_mode == MODE_RESET_ONLY) begin
                 fsm_state <= ST_DONE;
+              end else if (cfg_mode == MODE_TRIGGERED || radiography_mode) begin
+                fsm_state <= ST_PREP_WAIT;
               end else begin
                 fsm_state <= ST_INTEGRATE;
               end
             end
           end
 
+          ST_PREP_WAIT: begin
+            xray_enable <= 1'b1;
+            xray_wait_count <= xray_wait_count + 32'd1;
+            if (xray_prep_req) begin
+              xray_wait_count <= '0;
+              timer_count <= '0;
+              fsm_state <= ST_XRAY_ENABLE;
+            end else if (xray_wait_count >= (radiography_mode ? XRAY_TIMEOUT_30S : XRAY_TIMEOUT_5S)) begin
+              fsm_state <= ST_ERROR;
+              sts_error <= 1'b1;
+              sts_err_code <= ERR_XRAY_TIMEOUT;
+            end
+          end
+
           ST_INTEGRATE: begin
-            if (cfg_mode == MODE_TRIGGERED) begin
+            if (cfg_mode != MODE_DARK_FRAME) begin
               xray_enable <= 1'b1;
-              if (xray_on || xray_prep_req) begin
-                timer_count <= timer_count + 32'd1;
-                if (xray_off || timer_count >= cfg_tinteg) begin
-                  timer_count <= '0;
-                  fsm_state <= ST_READOUT_INIT;
-                end
-              end else begin
-                xray_wait_count <= xray_wait_count + 32'd1;
-                if (xray_wait_count >= (radiography_mode ? XRAY_TIMEOUT_30S : XRAY_TIMEOUT_5S)) begin
-                  fsm_state <= ST_ERROR;
-                  sts_error <= 1'b1;
-                  sts_err_code <= ERR_XRAY_TIMEOUT;
-                end
-              end
-            end else begin
-              if (cfg_mode != MODE_DARK_FRAME) begin
-                xray_enable <= 1'b1;
-              end
+            end
+            timer_count <= timer_count + 32'd1;
+            if (timer_count >= cfg_tinteg) begin
+              timer_count <= '0;
+              fsm_state <= ST_READOUT_INIT;
+            end
+          end
+
+          ST_XRAY_ENABLE: begin
+            xray_enable <= 1'b1;
+            if (xray_on || xray_prep_req) begin
               timer_count <= timer_count + 32'd1;
-              if (timer_count >= cfg_tinteg) begin
+              if (xray_off || timer_count >= cfg_tinteg) begin
                 timer_count <= '0;
                 fsm_state <= ST_READOUT_INIT;
+              end
+            end else begin
+              xray_wait_count <= xray_wait_count + 32'd1;
+              if (xray_wait_count >= (radiography_mode ? XRAY_TIMEOUT_30S : XRAY_TIMEOUT_5S)) begin
+                fsm_state <= ST_ERROR;
+                sts_error <= 1'b1;
+                sts_err_code <= ERR_XRAY_TIMEOUT;
               end
             end
           end
@@ -175,26 +196,31 @@ module panel_ctrl_fsm
             if ((cfg_mode != MODE_DARK_FRAME && gate_row_done && afe_line_valid) ||
                 (cfg_mode == MODE_DARK_FRAME && afe_line_valid)) begin
               if (row_index + 12'd1 >= cfg_nrows) begin
-                fsm_state <= ST_READOUT_DONE;
+                timer_count <= '0;
+                fsm_state <= ST_SETTLE;
               end else begin
                 row_index <= row_index + 12'd1;
               end
             end
           end
 
-          ST_READOUT_DONE: begin
+          ST_SETTLE: begin
             timer_count <= timer_count + 32'd1;
             if (timer_count >= cfg_tgate_settle) begin
               timer_count <= '0;
-              fsm_state <= ST_DONE;
+              fsm_state <= ST_READOUT_DONE;
             end
+          end
+
+          ST_READOUT_DONE: begin
+            fsm_state <= ST_DONE;
           end
 
           ST_DONE: begin
             sts_busy <= 1'b0;
             sts_done <= 1'b1;
             if (cfg_mode == MODE_CONTINUOUS) begin
-              fsm_state <= ST_RESET;
+              fsm_state <= ST_POWER_CHECK;
               sts_busy <= 1'b1;
             end else begin
               fsm_state <= ST_IDLE;

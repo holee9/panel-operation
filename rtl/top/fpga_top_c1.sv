@@ -73,7 +73,16 @@ module fpga_top_c1
 
   detector_core #(
       .USE_AFE2256(1'b0),
-      .USE_NT_GATE(1'b0)
+      .USE_NT_GATE(1'b0),
+      .FORCE_DEFAULT_COMBO(1'b1),
+      .DEFAULT_COMBO(COMBO_C1),
+      .DEFAULT_NROWS(2048),
+      .DEFAULT_NCOLS(2048),
+      .DEFAULT_AFE_CHIPS(1),
+      .DEFAULT_CSI_LANES(2),
+      .DEFAULT_TLINE(2200),
+      .DEFAULT_GATE_CLK_PERIOD(2200),
+      .DEFAULT_NT_STV_PULSE(100)
   ) u_detector_core (
       .clk_100mhz(clk_100mhz),
       .rst_n(rst_n),

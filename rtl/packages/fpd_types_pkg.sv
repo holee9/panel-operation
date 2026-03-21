@@ -2,15 +2,19 @@
 package fpd_types_pkg;
 
   // FSM states
-  typedef enum logic [2:0] {
-    ST_IDLE         = 3'b000,
-    ST_RESET        = 3'b001,
-    ST_INTEGRATE    = 3'b010,
-    ST_READOUT_INIT = 3'b011,
-    ST_SCAN_LINE    = 3'b100,
-    ST_READOUT_DONE = 3'b101,
-    ST_DONE         = 3'b110,
-    ST_ERROR        = 3'b111
+  typedef enum logic [3:0] {
+    ST_IDLE         = 4'h0,
+    ST_POWER_CHECK  = 4'h1,
+    ST_RESET        = 4'h2,
+    ST_PREP_WAIT    = 4'h3,
+    ST_INTEGRATE    = 4'h4,
+    ST_XRAY_ENABLE  = 4'h5,
+    ST_READOUT_INIT = 4'h6,
+    ST_SCAN_LINE    = 4'h7,
+    ST_SETTLE       = 4'h8,
+    ST_READOUT_DONE = 4'h9,
+    ST_DONE         = 4'hA,
+    ST_ERROR        = 4'hF
   } fsm_state_t;
 
   // Operating modes (REG_MODE[2:0])
