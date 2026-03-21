@@ -4,26 +4,38 @@
 #include "tests/TestHelpers.h"
 
 int main() {
-    fpd::sim::PanelFsmModel model;
-    model.reset();
-    model.set_inputs({
-        {"ctrl_start", 1U},
-        {"cfg_mode", 0U},
-        {"cfg_nrows", 2U},
-        {"afe_config_done", 1U},
-        {"gate_row_done", 1U},
-        {"afe_line_valid", 1U},
-    });
+    try {
+        fpd::sim::PanelFsmModel model;
+        model.reset();
+        model.set_inputs({
+            {"ctrl_start", 1U},
+            {"cfg_mode", 0U},
+            {"cfg_nrows", 2U},
+            {"cfg_treset", 1U},
+            {"cfg_tinteg", 1U},
+            {"cfg_nreset", 1U},
+            {"cfg_sync_dly", 1U},
+            {"cfg_tgate_settle", 1U},
+            {"afe_config_done", 1U},
+            {"gate_row_done", 1U},
+            {"afe_line_valid", 1U},
+        });
 
-    for (int i = 0; i < 12; ++i) {
-        model.step();
+        bool seen_done = false;
+        for (int i = 0; i < 20; ++i) {
+            model.step();
+            if (fpd::sim::GetScalar(model.get_outputs(), "sts_done") == 1U) {
+                seen_done = true;
+                break;
+            }
+        }
+
+        Expect(seen_done, "Panel FSM should assert done within 20 cycles");
+
+        std::cout << "test_panel_fsm passed\n";
+    } catch (const std::exception& e) {
+        std::cerr << "FAIL: " << e.what() << "\n";
+        return 1;
     }
-
-    const auto outputs = model.get_outputs();
-    Expect(fpd::sim::GetScalar(outputs, "fsm_state") == 0U ||
-               fpd::sim::GetScalar(outputs, "sts_done") == 1U,
-           "Panel FSM should eventually return to idle or assert done");
-
-    std::cout << "test_panel_fsm passed\n";
     return 0;
 }
