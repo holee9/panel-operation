@@ -269,19 +269,21 @@ flowchart LR
 
 **SPEC 문서**: [`.moai/specs/SPEC-FPD-SIM-001/`](.moai/specs/SPEC-FPD-SIM-001/) (35개 EARS 요구사항, 21개 수용기준, 6-Phase 구현 계획)
 
-**품질 리뷰**: 8.0/10 — READY FOR IMPLEMENTATION ([Review Report](SPEC-FPD-SIM-001-REVIEW.md))
+**품질 리뷰**: v1.0.0 → 8.0/10, v1.1.0 → **9.0/10** ([Review Report](SPEC-FPD-SIM-001-REVIEW.md)) | ([Cross-Verification Report](docs/review/CROSS-VERIFICATION-REPORT.md))
 
-| 리뷰 항목 | 결과 |
+| 리뷰 단계 | 결과 |
 |-----------|------|
-| CRITICAL | 0건 |
-| MAJOR | 3건 (모두 수정 완료) |
-| MINOR | 4건 (모두 수정 완료) |
-| 교차검증 | HIGH 4건 + MEDIUM 5건 + LOW 4건 (모두 수정 완료) |
+| 1차 품질 리뷰 (v1.0.0) | MAJOR 3건 + MINOR 4건 → 모두 수정 |
+| 교차검증 (v1.0.0) | HIGH 4 + MEDIUM 5 + LOW 4건 → 모두 수정 |
+| 딥싱크 교차검증 (v1.1.0) | 63건 발견 (4개 병렬 에이전트) → 문서 전면 보강 |
 
-**MAJOR 수정 내역:**
-- MAJOR-001: NT39565D 6-chip 캐스케이드 STVD 전파 의사코드 추가 (plan.md)
-- MAJOR-002: AFE2256 파이프라인 지연 상태 변수 (`pipeline_latch`, `output_delay`) 명세 보강 (plan.md)
-- MAJOR-003: NT39565D 6-chip 캐스케이드 수용기준 AC-SIM-021 신규 추가 (acceptance.md)
+**v1.1.0 주요 개선:**
+- 요구사항 36건 → 40건 (CSI-2 PRIMARY, 30s timeout, CDC, Safety 추가)
+- 수용기준 28건 → 34건 (C2/C4/C5/C7 하드웨어 조합 + CDC + Mismatch)
+- 추적성 매트릭스 34건 완성 (AC ↔ R-SIM 전수 매핑)
+- 네이밍 규칙 표준화 (PascalCase C++ ↔ snake_case RTL)
+- CDC 사양 신설 (5개 클럭 도메인 교차 전략)
+- 타이밍 제약 6건 추가 (Gate settle, SYNC skew, VGL/VGH)
 
 ### 5단계 검증 파이프라인
 
@@ -354,7 +356,10 @@ GoldenModelBase (추상 기반: reset/step/compare)
 주요 모델 구현 세부사항:
 - GateNt39565dModel: STVD 캐스케이드 전파 (6-chip daisy-chain, 1 CPV clock/chip 지연, <=100ns 스큐 검증)
 - AfeAfe2256Model: 파이프라인 모드 내부 상태 (pipeline_latch[256], output_delay_cycles 추적)
-- Csi2PacketModel: CRC-16 CCITT (0x1021) + ECC (Annex A) 구현
+- Csi2PacketModel: CRC-16 CCITT (0x1021) + ECC (Annex A), DT=0x2E (RAW16), VC=0
+- EmergencyShutdownModel: 과전압/과온도/PLL 장애 감지 + 긴급 차단
+
+**네이밍 규칙**: C++ PascalCase ↔ RTL snake_case (예: Csi2PacketModel ↔ csi2_packet_builder)
 ```
 
 ### Xilinx Primitive Handling (Verilator 호환)
@@ -504,12 +509,62 @@ rtl/
 │   └── line_buf_ram.sv            BRAM ping-pong line buffer
 │
 └── top/                           Top-level per combination
-    └── fpga_top_c1.sv             C1: NV1047 + AD71124 (reference)
+    ├── fpga_top_c1.sv             C1: NV1047 + AD71124 (reference)
+    ├── fpga_top_c3.sv             C3: NV1047 + AFE2256 (고화질)
+    └── fpga_top_c6.sv             C6: NT39565D ×6 + AD71124 ×12 (대형)
 ```
 
-### sim/ Directory Structure (SW-First Verification)
+**v1 RTL 현황**: 26개 SystemVerilog 모듈 (packages 2 + common 10 + panel 3 + gate 3 + roic 5 + top 3)
 
-sim/ 구조는 위의 SW-First Verification 섹션 참조. 상세 사양: [SPEC-FPD-SIM-001](.moai/specs/SPEC-FPD-SIM-001/plan.md)
+### sim/ Directory Structure (SW-First Verification — 구현됨)
+
+```
+sim/
+├── golden_models/
+│   ├── core/                        Base framework (6 files)
+│   │   ├── GoldenModelBase.h/cpp    Abstract base: reset/step/compare
+│   │   ├── SignalTypes.h            Bit-accurate types + SignalValue variant
+│   │   ├── ClockDomain.h/cpp        Multi-clock domain modeling
+│   │   ├── TestVectorIO.h/cpp       Test vector read/write (hex/binary)
+│   │   ├── CRC16.h/cpp              CRC-16 CCITT (MIPI CSI-2)
+│   │   └── ECC.h/cpp                MIPI CSI-2 ECC calculator
+│   ├── models/                      Per-module golden models (14 models, 28 files)
+│   │   ├── SpiSlaveModel.h/cpp      SPEC-001: SPI Mode 0/3
+│   │   ├── RegBankModel.h/cpp       SPEC-001: 32×16-bit registers
+│   │   ├── ClkRstModel.h/cpp        SPEC-001: MMCM + 2-FF reset sync
+│   │   ├── PanelFsmModel.h/cpp      SPEC-002: 7-state FSM, 5 modes
+│   │   ├── RowScanModel.h/cpp       SPEC-003: Row counter + timing
+│   │   ├── AfeAd711xxModel.h/cpp    SPEC-005: AD71124/AD71143
+│   │   ├── AfeAfe2256Model.h/cpp    SPEC-006: MCLK, CIC, pipeline
+│   │   ├── LineBufModel.h/cpp       SPEC-007: Ping-pong + CDC
+│   │   ├── Csi2PacketModel.h/cpp    SPEC-007: FS/FE + RAW16 + CRC + ECC
+│   │   ├── Csi2LaneDistModel.h/cpp  SPEC-007: 2/4-lane interleaving
+│   │   ├── ProtMonModel.h/cpp       SPEC-008: 5초 타임아웃
+│   │   ├── PowerSeqModel.h/cpp      SPEC-008: VGL→VGH 시퀀스
+│   │   ├── EmergencyShutdownModel.h/cpp  SPEC-008: 과전압/과온도
+│   │   └── FoundationConstants.h    공통 상수 정의
+│   └── generators/                  Test vector generators
+│       └── gen_spi_vectors.cpp      SPEC-001 벡터 생성
+├── cocotb_tests/                    Python testbenches (3 + conftest)
+│   ├── conftest.py                  Shared fixtures + vector loader
+│   ├── test_spi_slave.py            SPEC-001
+│   ├── test_reg_bank.py             SPEC-001
+│   └── test_clk_rst.py              SPEC-001
+├── tests/                           C++ unit tests (GoogleTest, 7 files)
+│   ├── test_spi_model.cpp           SPI slave model
+│   ├── test_reg_bank.cpp            Register bank model
+│   ├── test_clk_rst.cpp             Clock/reset model
+│   ├── test_panel_fsm.cpp           Panel FSM model
+│   ├── test_crc16.cpp               CRC-16 CCITT
+│   ├── test_ecc.cpp                 CSI-2 ECC
+│   ├── test_csi2_model.cpp          CSI-2 packet model
+│   └── TestHelpers.h                Test utilities
+└── CMakeLists.txt                   Top-level build (golden_models + tests + generators)
+```
+
+**sim/ 현황**: 56개 파일 (C++ 골든 모델 14종, GoogleTest 7개, cocotb 3개)
+
+상세 사양: [SPEC-FPD-SIM-001](.moai/specs/SPEC-FPD-SIM-001/plan.md)
 
 ### v2 추가 Modules (외부 메모리 확장, 별도 구현)
 
@@ -536,8 +591,10 @@ rtl/
 | 000 | STATIC | 단일 프레임 획득 |
 | 001 | CONTINUOUS | 자동 반복 (형광투시) |
 | 010 | TRIGGERED | X-ray 외부 트리거 대기 |
-| 011 | DARK_FRAME | Gate off, AFE 리드아웃만 (캘리브레이션) |
+| 011 | DARK_FRAME | Gate off, AFE 리드아웃만 (캘리브레이션) — FSM 상태가 아닌 모드 |
 | 100 | RESET_ONLY | 패널 리셋 전용 |
+
+**Note**: DARK_FRAME은 FSM 상태가 아닌 동작 모드이다. SCAN_LINE 상태에서 GATE_EN=0을 유지하여 Gate IC 비활성 상태에서 AFE 리드아웃만 수행한다 (offset 캘리브레이션용).
 
 ---
 
@@ -595,7 +652,7 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 
 | SPEC | Status | 비고 |
 |------|--------|------|
-| SPEC-FPD-SIM-001 | SPEC 완료 (8.0/10), 구현 대기 | 품질 리뷰 + 교차검증 수정 완료 |
+| SPEC-FPD-SIM-001 | **v1.1.0 완료 (9.0/10)**, 구현 진행 중 | 교차검증 63건 반영, 40 요구사항, 34 수용기준 |
 | SPEC-FPD-001 ~ 010 | SPEC 미수립 | SIM-001 기반으로 순차 수립 예정 |
 
 **Implementation Order**: SIM-001 (각 SPEC과 병행) + 001 → (002 + 008 병렬) → (003 + 005 병렬) → (004 + 006 병렬) → 007 → 009 → 010
@@ -628,7 +685,8 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | `docs/datasheet/` | IC 데이터시트 PDF (AD71124, AD71143, AFE2256, NV1047, NT39565D, 패널) |
 | `.moai/project/` | 프로젝트 문서 (product.md, structure.md, tech.md, implementation-plan.md) |
 | `.moai/specs/` | SPEC 문서 (EARS 요구사항, 수용기준, 구현 계획, 리서치) |
-| `sim/` | SW-First 검증 (C++ 골든 모델, cocotb 테스트, Verilator) — 구현 대기 |
+| `sim/` | SW-First 검증 — C++ 골든 모델 14종, GoogleTest 7개, cocotb 3개 (56파일) |
+| `docs/review/` | 교차검증 리포트 (63건 발견, 업계 딥리서치 6영역) |
 
 ### 리서치 문서 목록
 
@@ -649,10 +707,13 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | Date | Summary |
 |------|---------|
 | 2026-03-19 | 초기 프로젝트 설정 + README + RTL v1 모듈 구조 (22 .sv) |
-| 2026-03-19 | SPEC-FPD-SIM-001 수립 (SW-First 검증 프레임워크) |
-| 2026-03-19 | 품질 리뷰 8.0/10 통과, MAJOR 3건 + MINOR 4건 수정 |
+| 2026-03-19 | SPEC-FPD-SIM-001 v1.0.0 수립 (SW-First 검증 프레임워크) |
+| 2026-03-19 | 1차 품질 리뷰 8.0/10, MAJOR 3 + MINOR 4건 수정 |
 | 2026-03-19 | 교차검증 일괄 수정 (HIGH 4 + MEDIUM 5 + LOW 4건) |
-| 2026-03-20 | research_01 문자 깨짐 복구 (정규화 개요 추가) |
+| 2026-03-20 | research_01 문자 깨짐 복구 |
+| 2026-03-21 | 딥싱크 교차검증 — 63건 발견, SPEC v1.1.0 (40 요구사항, 34 수용기준) |
+| 2026-03-21 | 아키텍처 보강 (CDC 사양, FCLK, REG_NRESET, 누락 모듈 4건) |
+| 2026-03-21 | RTL 구현 보강 (26 .sv, 스켈레톤→구현) + sim/ 골든 모델 프레임워크 (56파일) |
 
 ---
 
