@@ -271,7 +271,7 @@ flowchart LR
 
 **개정 요청서**: [ECR-001](.moai/specs/SPEC-FPD-SIM-001/ECR-001.md) — v1.1.0→v1.2.0 SW Simulation 보강 근거
 
-**리뷰 문서**: [구현 코드 리뷰 v4](docs/review/review-claude.md) | [교차검증 v1](docs/review/CROSS-VERIFICATION-REPORT.md) | [품질 리뷰](SPEC-FPD-SIM-001-REVIEW.md)
+**리뷰 문서**: [구현 코드 리뷰 v5](docs/review/review-claude.md) | [테스트 검증 리포트](docs/review/test-verification-report.md) | [교차검증 v1](docs/review/CROSS-VERIFICATION-REPORT.md) | [품질 리뷰](SPEC-FPD-SIM-001-REVIEW.md)
 
 | 리뷰 단계 | 결과 |
 |-----------|------|
@@ -279,24 +279,40 @@ flowchart LR
 | 교차검증 (v1.0.0) | HIGH 4 + MEDIUM 5 + LOW 4건 → 모두 수정 |
 | 딥싱크 교차검증 (v1.1.0) | 63건 발견 → SPEC v1.1.0 반영 |
 | 교차검증 v2→v3 (RTL 구현) | 46건 중 17건 FIXED (37%), 잔여 35건 |
-| **SPEC v1.2.0 보강 개정** | **+12 요구사항, +13 수용기준, +1 Phase (ECR-001)** |
-| **구현 코드 리뷰 v4** | **R-SIM 52건 중 27 IMPL (52%), AC-SIM 47건 중 22 PASS (47%)** |
+| SPEC v1.2.0 보강 개정 | +12 요구사항, +13 수용기준, +1 Phase (ECR-001) |
+| 구현 코드 리뷰 v5 | R-SIM 25/52 IMPL, AC-SIM 0/47 실PASS (stub 수준) |
+| **빌드 + 테스트 검증** | **MSVC 19.40 — 0 에러, 0 경고, 13/13 PASS (100%)** |
 
-**v4 리뷰 결과 요약:**
+**빌드 + 테스트 검증 결과** ([상세 리포트](docs/review/test-verification-report.md)):
+
+| 지표 | 결과 |
+|------|------|
+| 빌드 (MSVC 19.40 /W4) | **0 에러, 0 경고** |
+| 단위 테스트 (CTest) | **13/13 PASS (100%)**, 0.47초 |
+| 검증 중 결함 발견 | 2건 (test_panel_fsm, test_radiog_model 크래시) → **즉시 수정** |
+| 정적 분석 | raw new/delete 0건, C-style cast 0건, 멤버 초기화 205건 전수 |
+| 동적 분석 (ASan) | VS IDE 실행 권장 (간접 검증 완료) |
+
+**v5 코드 리뷰 현황:**
 
 | 지표 | 현황 | 목표 |
 |------|------|------|
-| 요구사항 구현율 | 27/52 (52%) | 100% |
-| 수용기준 통과율 | 22/47 PASS (47%) | 100% |
+| 요구사항 구현율 | 25/52 IMPL (48%) | 100% |
+| 수용기준 실PASS | 0/47 (전체 stub) | 47/47 |
 | Phase 완료율 | 4.3/7 (63%) | 100% |
 | 기능 커버리지 | ~68% | 80% (NFR-SIM-005) |
-| 골든 모델 클래스 | 22/30 (73%) | 30 |
-| 골든 모델 LOC | 2,284/5,500 (42%) | 5,500 |
-| cocotb 테스트 LOC | 214/3,400 (6%) | 3,400 |
+| 골든 모델 | 22/30 클래스, 2,284/5,500 LOC (42%) | 30, 5,500 |
+| C++ 테스트 | 13개 375 LOC (평균 2.1 assert) | 1,800 LOC |
+| cocotb 테스트 | 14개 208 LOC (전체 stub) | 3,400 LOC |
+| CRITICAL 발견 | **6건** | 0 |
 
-**즉시 조치 필요 FAIL 6건:**
-- TLINE_MIN 골든 모델 클램핑, Combo별 NCOLS 기본값, 다크 프레임 평균화
-- FSM 확장 상태 골든 모델 미반영, 타이밍 하드코딩 잔존, 엣지케이스 3건
+**CRITICAL 6건** (RTL 검증 차단):
+1. Settle time ST_SETTLE 미구현
+2. 방사선 5s/30s 듀얼 타임아웃 미분리
+3. NV1047 break-before-make 미구현
+4. NT39565D dual-STV 미구현
+5. TLINE_MIN 레지스터 검증 부재
+6. CSI-2 ECC RTL 미구현
 
 **v1.2.0 SPEC 변경 (v1.1.0 대비):**
 - 요구사항 40→52건: combo 검증, 핸드셰이크, settle, multi-AFE, gate 모델, CIC, v2-prep
@@ -750,7 +766,7 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | `.moai/project/` | 프로젝트 문서 (product.md, structure.md, tech.md, implementation-plan.md) |
 | `.moai/specs/` | SPEC 문서 (EARS 요구사항, 수용기준, 구현 계획, 리서치) |
 | `sim/` | SW-First 검증 — C++ 골든 모델 22종, GoogleTest 13개, cocotb 15개 (~80파일) |
-| `docs/review/` | 구현 코드 리뷰 v4 (R-SIM 27/52 IMPL, AC-SIM 22/47 PASS, 커버리지 68%) |
+| `docs/review/` | 구현 코드 리뷰 v5 + 테스트 검증 리포트 (빌드 0에러, 13/13 PASS) |
 
 ### 리서치 문서 목록
 
@@ -784,6 +800,10 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | 2026-03-21 | SPEC v1.2.0 개정 — +12 요구사항, +13 수용기준, Phase 7 신설 (ECR-001) |
 | 2026-03-21 | FSM v1-extended 상태 구현 (S1/S3/S5/S7) + PanelFsmModel 타이밍 파라미터화 |
 | 2026-03-21 | 구현 코드 리뷰 v4 — R-SIM 27/52 IMPL, AC-SIM 22/47 PASS, 기능 커버리지 68% |
+| 2026-03-21 | 구현 코드 리뷰 v5 — 테스트 실검증 기준 적용, AC-SIM 0/47 실PASS (stub 재판정) |
+| 2026-03-21 | VS2022 빌드 검증 — MSVC 19.40 /W4: 0 에러 0 경고, CTest 13/13 PASS (100%) |
+| 2026-03-21 | test_panel_fsm + test_radiog_model 크래시 수정 (0xc0000409 → PASS) |
+| 2026-03-21 | 테스트 검증 리포트(TVR-001) 발행 — 빌드/테스트/정적/동적 분석 종합 |
 
 ---
 
