@@ -267,32 +267,43 @@ flowchart LR
 
 ## SW-First Verification
 
-**SPEC 문서**: [`.moai/specs/SPEC-FPD-SIM-001/`](.moai/specs/SPEC-FPD-SIM-001/) (35개 EARS 요구사항, 21개 수용기준, 6-Phase 구현 계획)
+**SPEC 문서**: [`.moai/specs/SPEC-FPD-SIM-001/`](.moai/specs/SPEC-FPD-SIM-001/) — **v1.2.0** (52개 EARS 요구사항, 47개 수용기준, 7-Phase 구현 계획)
 
-**품질 리뷰**: v1.0.0 → 8.0/10, v1.1.0 → **9.0/10** ([Review Report](SPEC-FPD-SIM-001-REVIEW.md)) | ([Cross-Verification Report](docs/review/CROSS-VERIFICATION-REPORT.md)) | ([교차검증 v3](docs/review/review-claude.md))
+**개정 요청서**: [ECR-001](.moai/specs/SPEC-FPD-SIM-001/ECR-001.md) — v1.1.0→v1.2.0 SW Simulation 보강 근거
+
+**리뷰 문서**: [구현 코드 리뷰 v4](docs/review/review-claude.md) | [교차검증 v1](docs/review/CROSS-VERIFICATION-REPORT.md) | [품질 리뷰](SPEC-FPD-SIM-001-REVIEW.md)
 
 | 리뷰 단계 | 결과 |
 |-----------|------|
 | 1차 품질 리뷰 (v1.0.0) | MAJOR 3건 + MINOR 4건 → 모두 수정 |
 | 교차검증 (v1.0.0) | HIGH 4 + MEDIUM 5 + LOW 4건 → 모두 수정 |
-| 딥싱크 교차검증 (v1.1.0) | 63건 발견 (4개 병렬 에이전트) → 문서 전면 보강 |
-| **교차검증 v2→v3 (RTL 구현)** | **v2: 46건 → v3: 17건 FIXED (37%), 잔여 35건** |
+| 딥싱크 교차검증 (v1.1.0) | 63건 발견 → SPEC v1.1.0 반영 |
+| 교차검증 v2→v3 (RTL 구현) | 46건 중 17건 FIXED (37%), 잔여 35건 |
+| **SPEC v1.2.0 보강 개정** | **+12 요구사항, +13 수용기준, +1 Phase (ECR-001)** |
+| **구현 코드 리뷰 v4** | **R-SIM 52건 중 27 IMPL (52%), AC-SIM 47건 중 22 PASS (47%)** |
 
-**v3 교차검증 결과 요약:**
-- 전체 완성도: **~45% → ~63%** (+18%p 개선)
-- detector_core.sv 신규 구현 + fpga_top 인스턴스화 완료
-- gate_nv1047 시프트 레지스터 + CLK 분주기 구현 (30%→80%)
-- afe_ad711xx/afe2256 SPI 플레이스홀더 → 실제 레지스터 패킹 (20%→65%)
-- REG_TINTEG 24비트 확장 + 단위 통일 (10ns 기준)
-- 잔여 CRITICAL 6건: FSM 상태 누락(5개), gate_nt39565d STV, Forward Bias 미존재, Settle 타임, Multi-AFE 미지원, 골든 모델 타이밍
+**v4 리뷰 결과 요약:**
 
-**v1.1.0 주요 개선:**
-- 요구사항 36건 → 40건 (CSI-2 PRIMARY, 30s timeout, CDC, Safety 추가)
-- 수용기준 28건 → 34건 (C2/C4/C5/C7 하드웨어 조합 + CDC + Mismatch)
-- 추적성 매트릭스 34건 완성 (AC ↔ R-SIM 전수 매핑)
-- 네이밍 규칙 표준화 (PascalCase C++ ↔ snake_case RTL)
-- CDC 사양 신설 (5개 클럭 도메인 교차 전략)
-- 타이밍 제약 6건 추가 (Gate settle, SYNC skew, VGL/VGH)
+| 지표 | 현황 | 목표 |
+|------|------|------|
+| 요구사항 구현율 | 27/52 (52%) | 100% |
+| 수용기준 통과율 | 22/47 PASS (47%) | 100% |
+| Phase 완료율 | 4.3/7 (63%) | 100% |
+| 기능 커버리지 | ~68% | 80% (NFR-SIM-005) |
+| 골든 모델 클래스 | 22/30 (73%) | 30 |
+| 골든 모델 LOC | 2,284/5,500 (42%) | 5,500 |
+| cocotb 테스트 LOC | 214/3,400 (6%) | 3,400 |
+
+**즉시 조치 필요 FAIL 6건:**
+- TLINE_MIN 골든 모델 클램핑, Combo별 NCOLS 기본값, 다크 프레임 평균화
+- FSM 확장 상태 골든 모델 미반영, 타이밍 하드코딩 잔존, 엣지케이스 3건
+
+**v1.2.0 SPEC 변경 (v1.1.0 대비):**
+- 요구사항 40→52건: combo 검증, 핸드셰이크, settle, multi-AFE, gate 모델, CIC, v2-prep
+- 수용기준 34→47건 + 엣지케이스 5→8건
+- Phase 6→7 (Phase 7: v2-Prep Models 신설)
+- 리스크 6→8건 (타이밍 발산, multi-AFE 성능)
+- 구현 규모: ~85→~105 파일, ~10,400→~13,500 LOC
 
 ### 5단계 검증 파이프라인
 
@@ -350,7 +361,7 @@ GoldenModelBase (추상 기반: reset/step/compare)
 ├── SpiSlaveModel          SPEC-001: SPI Mode 0/3, 32-register R/W
 ├── RegBankModel           SPEC-001: 32x16-bit register file
 ├── ClkRstModel            SPEC-001: MMCM 클럭 + 2-FF reset sync
-├── PanelFsmModel          SPEC-002: 7-state FSM, 5 operating modes
+├── PanelFsmModel          SPEC-002: 12-state FSM (v1-extended), 5 operating modes
 ├── GateNv1047Model        SPEC-003: SD1 shift register, OE/ONA
 ├── GateNt39565dModel      SPEC-004: Dual-STV, 6-chip cascade
 ├── AfeAd711xxModel        SPEC-005: AD71124/AD71143 (parameterized)
@@ -501,7 +512,7 @@ rtl/
 │   └── emergency_shutdown.sv      Over-voltage/temp/PLL detection
 │
 ├── panel/                         Panel driving control
-│   ├── panel_ctrl_fsm.sv          Main FSM (7 states + ERROR, 5 modes)
+│   ├── panel_ctrl_fsm.sv          Main FSM (12 states incl. v1-extended, 5 modes)
 │   ├── panel_reset_ctrl.sv        Reset sequence + dummy scans
 │   └── panel_integ_ctrl.sv        Integration timing + X-ray handshake
 │
@@ -524,7 +535,7 @@ rtl/
     └── fpga_top_c6.sv             C6: NT39565D ×6 + AD71124 ×12 (대형)
 ```
 
-**v1 RTL 현황**: 27개 SystemVerilog 모듈 (packages 2 + common 10 + panel 3 + gate 3 + roic 5 + top 4)
+**v1 RTL 현황**: 27개 SystemVerilog 모듈 (packages 2 + common 10 + panel 3 + gate 3 + roic 5 + top 4) | FSM 12-state (v1-extended) + Combo별 TLINE/NCOLS 검증
 
 ### sim/ Directory Structure (SW-First Verification — 구현됨)
 
@@ -538,11 +549,11 @@ sim/
 │   │   ├── TestVectorIO.h/cpp       Test vector read/write (hex/binary)
 │   │   ├── CRC16.h/cpp              CRC-16 CCITT (MIPI CSI-2)
 │   │   └── ECC.h/cpp                MIPI CSI-2 ECC calculator
-│   ├── models/                      Per-module golden models (14 models, 28 files)
+│   ├── models/                      Per-module golden models (22 models, 44 files)
 │   │   ├── SpiSlaveModel.h/cpp      SPEC-001: SPI Mode 0/3
 │   │   ├── RegBankModel.h/cpp       SPEC-001: 32×16-bit registers
 │   │   ├── ClkRstModel.h/cpp        SPEC-001: MMCM + 2-FF reset sync
-│   │   ├── PanelFsmModel.h/cpp      SPEC-002: 7-state FSM, 5 modes
+│   │   ├── PanelFsmModel.h/cpp      SPEC-002: 12-state FSM, 5 modes
 │   │   ├── RowScanModel.h/cpp       SPEC-003: Row counter + timing
 │   │   ├── AfeAd711xxModel.h/cpp    SPEC-005: AD71124/AD71143
 │   │   ├── AfeAfe2256Model.h/cpp    SPEC-006: MCLK, CIC, pipeline
@@ -555,12 +566,23 @@ sim/
 │   │   └── FoundationConstants.h    공통 상수 정의
 │   └── generators/                  Test vector generators
 │       └── gen_spi_vectors.cpp      SPEC-001 벡터 생성
-├── cocotb_tests/                    Python testbenches (3 + conftest)
+├── cocotb_tests/                    Python testbenches (15 + conftest)
 │   ├── conftest.py                  Shared fixtures + vector loader
 │   ├── test_spi_slave.py            SPEC-001
 │   ├── test_reg_bank.py             SPEC-001
-│   └── test_clk_rst.py              SPEC-001
-├── tests/                           C++ unit tests (GoogleTest, 7 files)
+│   ├── test_clk_rst.py              SPEC-001
+│   ├── test_panel_fsm.py            SPEC-002
+│   ├── test_gate_nv1047.py          SPEC-003
+│   ├── test_gate_nt39565d.py        SPEC-004
+│   ├── test_afe_ad711xx.py          SPEC-005
+│   ├── test_afe_afe2256.py          SPEC-006
+│   ├── test_line_data_rx.py         SPEC-007
+│   ├── test_line_buf.py             SPEC-007
+│   ├── test_csi2_tx.py              SPEC-007
+│   ├── test_safety.py               SPEC-008
+│   ├── test_integration.py          SPEC-009
+│   └── test_radiography.py          SPEC-010
+├── tests/                           C++ unit tests (GoogleTest, 13 files)
 │   ├── test_spi_model.cpp           SPI slave model
 │   ├── test_reg_bank.cpp            Register bank model
 │   ├── test_clk_rst.cpp             Clock/reset model
@@ -568,11 +590,16 @@ sim/
 │   ├── test_crc16.cpp               CRC-16 CCITT
 │   ├── test_ecc.cpp                 CSI-2 ECC
 │   ├── test_csi2_model.cpp          CSI-2 packet model
+│   ├── test_gate_models.cpp         Gate IC models
+│   ├── test_afe_models.cpp          AFE models
+│   ├── test_safety_models.cpp       Safety models
+│   ├── test_line_buf.cpp            Line buffer model
+│   ├── test_vector_io.cpp           Test vector I/O
 │   └── TestHelpers.h                Test utilities
 └── CMakeLists.txt                   Top-level build (golden_models + tests + generators)
 ```
 
-**sim/ 현황**: 56개 파일 (C++ 골든 모델 14종, GoogleTest 7개, cocotb 3개)
+**sim/ 현황**: ~80개 파일 (C++ 골든 모델 22종, GoogleTest 13개, cocotb 15개)
 
 상세 사양: [SPEC-FPD-SIM-001](.moai/specs/SPEC-FPD-SIM-001/plan.md)
 
@@ -656,30 +683,41 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | SPEC-FPD-009 | Integration: fpga_top C1/C3/C6 | fpga_top_c1, fpga_top_c3, fpga_top_c6 | 001-008 |
 | SPEC-FPD-010 | Radiography Static Mode Extension | panel_ctrl_fsm (확장) | 009 |
 
-| SPEC-FPD-SIM-001 | SW-First Verification Framework | GoldenModelBase, 14 C++ models, cocotb tests, Verilator harness | 각 SPEC 병렬 |
+| SPEC-FPD-SIM-001 | SW-First Verification Framework | GoldenModelBase, 22 C++ models, cocotb tests, Verilator harness | 각 SPEC 병렬 |
 
 **SPEC 진행 상태:**
 
 | SPEC | Status | 비고 |
 |------|--------|------|
-| SPEC-FPD-SIM-001 | **v1.1.0 완료 (9.0/10)**, 구현 진행 중 | 교차검증 63건 반영, 40 요구사항, 34 수용기준 |
+| SPEC-FPD-SIM-001 | **v1.2.0** (구현 진행 중) | 52 요구사항, 47 수용기준, 7 Phase, ECR-001 승인 |
 | SPEC-FPD-001 ~ 010 | SPEC 미수립 | SIM-001 기반으로 순차 수립 예정 |
 
-**RTL 구현 완성도 (v3 교차검증 기준):**
+**SW Simulation 구현 진척도 (v1.2.0 plan.md 기준):**
 
-| 모듈 그룹 | 완성도 | 주요 현황 |
-|-----------|--------|-----------|
-| packages (types, params) | 80% | PASS — FSM enum, 타이밍 파라미터 정의 |
-| Foundation (SPI, RegBank, ClkRst) | 80% | PASS — CDC 동기화 1건 잔여 |
-| Panel FSM + 제어 | 55% | 부분 — 8/13 상태 구현, AEC 미구현 |
-| Gate NV1047 | **80%** | **PASS** — SR + CLK 분주 구현 완료 |
-| Gate NT39565D | 45% | 부분 — STV/OE 로직 미완 |
-| AFE AD711xx/AFE2256 | **65%** | **개선** — SPI 실제 구현, 클럭 주파수 보정 |
-| LVDS RX + Line Buffer | 65% | 부분 — 단일 AFE, ISERDESE2 미반영 |
-| CSI-2 TX | 60% | 부분 — 패킷 빌더 동작, 레인 할당 고정 |
-| Safety (ProtMon, Emergency, Power) | 65% | 부분 — 에러 경로 분리, 딜레이 미구현 |
-| Top (detector_core, fpga_top) | **85%** | **신규 구현** — 전체 모듈 연결 완료 |
-| **전체 평균** | **~63%** | v2(45%) 대비 +18%p |
+| Phase | 범위 | 완료율 | 상태 |
+|-------|------|--------|------|
+| 1. Foundation | Core + SPI + RegBank + ClkRst | **100%** | COMPLETE |
+| 2. FSM + Safety | PanelFSM + Prot + Power | 62% | IN_PROGRESS |
+| 3. Gate IC | RowScan + NV1047 + NT39565D | 88% | IN_PROGRESS |
+| 4. AFE Controller | AfeSPI + AD711xx + AFE2256 | 70% | IN_PROGRESS |
+| 5. Data Path | LVDS + LineBuf + CSI-2 | 67% | IN_PROGRESS |
+| 6. Integration | RadiogModel + Verilator | **100%** | COMPLETE |
+| 7. v2-Prep | ForwardBias + Settle + Cal | 0% | NOT_STARTED |
+| **전체** | | **63%** | |
+
+**영역별 기능 커버리지:**
+
+| 영역 | 커버리지 |
+|------|----------|
+| Core SPI + 레지스터 | 85% |
+| Panel FSM 제어 | 75% |
+| Gate 드라이버 | 80% |
+| AFE 제어 | 70% |
+| CSI-2 TX | 75% |
+| 데이터 패스 | 65% |
+| 안전 모듈 | 70% |
+| cocotb/Verilator 통합 | 40% |
+| **전체** | **~68%** |
 
 **Implementation Order**: SIM-001 (각 SPEC과 병행) + 001 → (002 + 008 병렬) → (003 + 005 병렬) → (004 + 006 병렬) → 007 → 009 → 010
 
@@ -711,8 +749,8 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | `docs/datasheet/` | IC 데이터시트 PDF (AD71124, AD71143, AFE2256, NV1047, NT39565D, 패널) |
 | `.moai/project/` | 프로젝트 문서 (product.md, structure.md, tech.md, implementation-plan.md) |
 | `.moai/specs/` | SPEC 문서 (EARS 요구사항, 수용기준, 구현 계획, 리서치) |
-| `sim/` | SW-First 검증 — C++ 골든 모델 14종, GoogleTest 7개, cocotb 3개 (56파일) |
-| `docs/review/` | 교차검증 리포트 (v3: 17건 해결, 35건 잔여, 완성도 63%) |
+| `sim/` | SW-First 검증 — C++ 골든 모델 22종, GoogleTest 13개, cocotb 15개 (~80파일) |
+| `docs/review/` | 구현 코드 리뷰 v4 (R-SIM 27/52 IMPL, AC-SIM 22/47 PASS, 커버리지 68%) |
 
 ### 리서치 문서 목록
 
@@ -743,6 +781,9 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | 2026-03-21 | detector_core.sv 신규 구현 + fpga_top 인스턴스화 (27 .sv) |
 | 2026-03-21 | gate_nv1047 SR + CLK 분주, afe SPI 실구현, REG_TINTEG 24비트, data_out_mux cfg_ncols |
 | 2026-03-21 | 교차검증 v3 — 46건 중 17건 FIXED (37%), 신규 7건 발견, 잔여 35건 (완성도 ~63%) |
+| 2026-03-21 | SPEC v1.2.0 개정 — +12 요구사항, +13 수용기준, Phase 7 신설 (ECR-001) |
+| 2026-03-21 | FSM v1-extended 상태 구현 (S1/S3/S5/S7) + PanelFsmModel 타이밍 파라미터화 |
+| 2026-03-21 | 구현 코드 리뷰 v4 — R-SIM 27/52 IMPL, AC-SIM 22/47 PASS, 기능 커버리지 68% |
 
 ---
 
