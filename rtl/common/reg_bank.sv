@@ -72,6 +72,7 @@ module reg_bank
   localparam logic [REG_ADDR_WIDTH-1:0] REG_LINE_IDX_ADDR     = 5'h14;
   localparam logic [REG_ADDR_WIDTH-1:0] REG_ERR_CODE_ADDR     = 5'h15;
   localparam logic [REG_ADDR_WIDTH-1:0] REG_NRESET_ADDR       = 5'h16;
+  localparam logic [REG_ADDR_WIDTH-1:0] REG_TINTEG_H_ADDR     = 5'h17;
   localparam logic [REG_ADDR_WIDTH-1:0] REG_VERSION_ADDR      = 5'h1F;
 
   logic [REG_DATA_WIDTH-1:0] regs [0:(1 << REG_ADDR_WIDTH)-1];
@@ -128,6 +129,7 @@ module reg_bank
       regs[REG_AFE_NCHIP_ADDR]    <= 16'h0001;
       regs[REG_SYNC_DLY_ADDR]     <= 16'h0000;
       regs[REG_NRESET_ADDR]       <= 16'h0003;
+      regs[REG_TINTEG_H_ADDR]     <= 16'h0000;
       regs[REG_VERSION_ADDR]      <= 16'h0010;
     end else begin
       regs[REG_CTRL_ADDR][1:0] <= 2'b00;
@@ -146,7 +148,7 @@ module reg_bank
     cfg_ncols         = regs[REG_NCOLS_ADDR][11:0];
     cfg_tline         = regs[REG_TLINE_ADDR];
     cfg_treset        = regs[REG_TRESET_ADDR];
-    cfg_tinteg        = {8'h00, regs[REG_TINTEG_ADDR]};
+    cfg_tinteg        = {regs[REG_TINTEG_H_ADDR][7:0], regs[REG_TINTEG_ADDR]};
     cfg_tgate_on      = regs[REG_TGATE_ON_ADDR][11:0];
     cfg_tgate_settle  = regs[REG_TGATE_SETTLE_ADDR][7:0];
     cfg_afe_ifs       = regs[REG_AFE_IFS_ADDR][5:0];

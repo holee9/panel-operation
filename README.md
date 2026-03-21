@@ -269,13 +269,22 @@ flowchart LR
 
 **SPEC 문서**: [`.moai/specs/SPEC-FPD-SIM-001/`](.moai/specs/SPEC-FPD-SIM-001/) (35개 EARS 요구사항, 21개 수용기준, 6-Phase 구현 계획)
 
-**품질 리뷰**: v1.0.0 → 8.0/10, v1.1.0 → **9.0/10** ([Review Report](SPEC-FPD-SIM-001-REVIEW.md)) | ([Cross-Verification Report](docs/review/CROSS-VERIFICATION-REPORT.md))
+**품질 리뷰**: v1.0.0 → 8.0/10, v1.1.0 → **9.0/10** ([Review Report](SPEC-FPD-SIM-001-REVIEW.md)) | ([Cross-Verification Report](docs/review/CROSS-VERIFICATION-REPORT.md)) | ([교차검증 v3](docs/review/review-claude.md))
 
 | 리뷰 단계 | 결과 |
 |-----------|------|
 | 1차 품질 리뷰 (v1.0.0) | MAJOR 3건 + MINOR 4건 → 모두 수정 |
 | 교차검증 (v1.0.0) | HIGH 4 + MEDIUM 5 + LOW 4건 → 모두 수정 |
 | 딥싱크 교차검증 (v1.1.0) | 63건 발견 (4개 병렬 에이전트) → 문서 전면 보강 |
+| **교차검증 v2→v3 (RTL 구현)** | **v2: 46건 → v3: 17건 FIXED (37%), 잔여 35건** |
+
+**v3 교차검증 결과 요약:**
+- 전체 완성도: **~45% → ~63%** (+18%p 개선)
+- detector_core.sv 신규 구현 + fpga_top 인스턴스화 완료
+- gate_nv1047 시프트 레지스터 + CLK 분주기 구현 (30%→80%)
+- afe_ad711xx/afe2256 SPI 플레이스홀더 → 실제 레지스터 패킹 (20%→65%)
+- REG_TINTEG 24비트 확장 + 단위 통일 (10ns 기준)
+- 잔여 CRITICAL 6건: FSM 상태 누락(5개), gate_nt39565d STV, Forward Bias 미존재, Settle 타임, Multi-AFE 미지원, 골든 모델 타이밍
 
 **v1.1.0 주요 개선:**
 - 요구사항 36건 → 40건 (CSI-2 PRIMARY, 30s timeout, CDC, Safety 추가)
@@ -509,12 +518,13 @@ rtl/
 │   └── line_buf_ram.sv            BRAM ping-pong line buffer
 │
 └── top/                           Top-level per combination
+    ├── detector_core.sv           전체 서브모듈 인스턴스화 (551줄)
     ├── fpga_top_c1.sv             C1: NV1047 + AD71124 (reference)
     ├── fpga_top_c3.sv             C3: NV1047 + AFE2256 (고화질)
     └── fpga_top_c6.sv             C6: NT39565D ×6 + AD71124 ×12 (대형)
 ```
 
-**v1 RTL 현황**: 26개 SystemVerilog 모듈 (packages 2 + common 10 + panel 3 + gate 3 + roic 5 + top 3)
+**v1 RTL 현황**: 27개 SystemVerilog 모듈 (packages 2 + common 10 + panel 3 + gate 3 + roic 5 + top 4)
 
 ### sim/ Directory Structure (SW-First Verification — 구현됨)
 
@@ -655,6 +665,22 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | SPEC-FPD-SIM-001 | **v1.1.0 완료 (9.0/10)**, 구현 진행 중 | 교차검증 63건 반영, 40 요구사항, 34 수용기준 |
 | SPEC-FPD-001 ~ 010 | SPEC 미수립 | SIM-001 기반으로 순차 수립 예정 |
 
+**RTL 구현 완성도 (v3 교차검증 기준):**
+
+| 모듈 그룹 | 완성도 | 주요 현황 |
+|-----------|--------|-----------|
+| packages (types, params) | 80% | PASS — FSM enum, 타이밍 파라미터 정의 |
+| Foundation (SPI, RegBank, ClkRst) | 80% | PASS — CDC 동기화 1건 잔여 |
+| Panel FSM + 제어 | 55% | 부분 — 8/13 상태 구현, AEC 미구현 |
+| Gate NV1047 | **80%** | **PASS** — SR + CLK 분주 구현 완료 |
+| Gate NT39565D | 45% | 부분 — STV/OE 로직 미완 |
+| AFE AD711xx/AFE2256 | **65%** | **개선** — SPI 실제 구현, 클럭 주파수 보정 |
+| LVDS RX + Line Buffer | 65% | 부분 — 단일 AFE, ISERDESE2 미반영 |
+| CSI-2 TX | 60% | 부분 — 패킷 빌더 동작, 레인 할당 고정 |
+| Safety (ProtMon, Emergency, Power) | 65% | 부분 — 에러 경로 분리, 딜레이 미구현 |
+| Top (detector_core, fpga_top) | **85%** | **신규 구현** — 전체 모듈 연결 완료 |
+| **전체 평균** | **~63%** | v2(45%) 대비 +18%p |
+
 **Implementation Order**: SIM-001 (각 SPEC과 병행) + 001 → (002 + 008 병렬) → (003 + 005 병렬) → (004 + 006 병렬) → 007 → 009 → 010
 
 ### v2: 외부 메모리 확장 (v1 완료 후)
@@ -686,7 +712,7 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | `.moai/project/` | 프로젝트 문서 (product.md, structure.md, tech.md, implementation-plan.md) |
 | `.moai/specs/` | SPEC 문서 (EARS 요구사항, 수용기준, 구현 계획, 리서치) |
 | `sim/` | SW-First 검증 — C++ 골든 모델 14종, GoogleTest 7개, cocotb 3개 (56파일) |
-| `docs/review/` | 교차검증 리포트 (63건 발견, 업계 딥리서치 6영역) |
+| `docs/review/` | 교차검증 리포트 (v3: 17건 해결, 35건 잔여, 완성도 63%) |
 
 ### 리서치 문서 목록
 
@@ -714,6 +740,9 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | 2026-03-21 | 딥싱크 교차검증 — 63건 발견, SPEC v1.1.0 (40 요구사항, 34 수용기준) |
 | 2026-03-21 | 아키텍처 보강 (CDC 사양, FCLK, REG_NRESET, 누락 모듈 4건) |
 | 2026-03-21 | RTL 구현 보강 (26 .sv, 스켈레톤→구현) + sim/ 골든 모델 프레임워크 (56파일) |
+| 2026-03-21 | detector_core.sv 신규 구현 + fpga_top 인스턴스화 (27 .sv) |
+| 2026-03-21 | gate_nv1047 SR + CLK 분주, afe SPI 실구현, REG_TINTEG 24비트, data_out_mux cfg_ncols |
+| 2026-03-21 | 교차검증 v3 — 46건 중 17건 FIXED (37%), 신규 7건 발견, 잔여 35건 (완성도 ~63%) |
 
 ---
 

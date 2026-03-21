@@ -63,31 +63,76 @@ module fpga_top_c1
     output logic        en_dvdd
 );
 
-  always_comb begin
-    spi_miso = 1'b0;
-    mcu_data = '0;
-    mcu_data_rdy = 1'b0;
-    irq_n = 1'b1;
-    nv_sd1 = 1'b0;
-    nv_sd2 = 1'b0;
-    nv_clk = 1'b0;
-    nv_oe = 1'b1;
-    nv_ona = 1'b1;
-    nv_lr = 1'b0;
-    nv_rst = rst_n;
-    nv_md = 2'b00;
-    afe_aclk = clk_100mhz;
-    afe_sync = 1'b0;
-    afe_reset = ~rst_n;
-    afe_spi_sck = 1'b0;
-    afe_spi_sdi = 1'b0;
-    afe_spi_cs_n = 1'b1;
-    xray_enable = 1'b0;
-    en_vgl = 1'b0;
-    en_vgh = 1'b0;
-    en_avdd1 = 1'b0;
-    en_avdd2 = 1'b0;
-    en_dvdd = 1'b0;
-  end
+  logic irq_line_ready;
+  logic irq_frame_done;
+  logic afe_mclk_unused;
+  logic afe_tp_sel_unused;
+  logic nt_stv1l_unused, nt_stv2l_unused, nt_stv1r_unused, nt_stv2r_unused;
+  logic nt_cpv_l_unused, nt_cpv_r_unused, nt_lr_unused;
+  logic nt_oe1_l_unused, nt_oe1_r_unused, nt_oe2_l_unused, nt_oe2_r_unused;
+
+  detector_core #(
+      .USE_AFE2256(1'b0),
+      .USE_NT_GATE(1'b0)
+  ) u_detector_core (
+      .clk_100mhz(clk_100mhz),
+      .rst_n(rst_n),
+      .spi_sclk(spi_sclk),
+      .spi_mosi(spi_mosi),
+      .spi_miso(spi_miso),
+      .spi_cs_n(spi_cs_n),
+      .mcu_data(mcu_data),
+      .mcu_data_rdy(mcu_data_rdy),
+      .mcu_data_ack(mcu_data_ack),
+      .irq_line_ready(irq_line_ready),
+      .irq_frame_done(irq_frame_done),
+      .nv_sd1(nv_sd1),
+      .nv_sd2(nv_sd2),
+      .nv_clk(nv_clk),
+      .nv_oe(nv_oe),
+      .nv_ona(nv_ona),
+      .nv_lr(nv_lr),
+      .nv_rst(nv_rst),
+      .nv_md(nv_md),
+      .nt_stv1l(nt_stv1l_unused),
+      .nt_stv2l(nt_stv2l_unused),
+      .nt_stv1r(nt_stv1r_unused),
+      .nt_stv2r(nt_stv2r_unused),
+      .nt_cpv_l(nt_cpv_l_unused),
+      .nt_cpv_r(nt_cpv_r_unused),
+      .nt_lr(nt_lr_unused),
+      .nt_oe1_l(nt_oe1_l_unused),
+      .nt_oe1_r(nt_oe1_r_unused),
+      .nt_oe2_l(nt_oe2_l_unused),
+      .nt_oe2_r(nt_oe2_r_unused),
+      .afe_aclk(afe_aclk),
+      .afe_mclk(afe_mclk_unused),
+      .afe_sync(afe_sync),
+      .afe_tp_sel(afe_tp_sel_unused),
+      .afe_reset(afe_reset),
+      .afe_spi_sck(afe_spi_sck),
+      .afe_spi_sdi(afe_spi_sdi),
+      .afe_spi_sdo(afe_spi_sdo),
+      .afe_spi_cs_n(afe_spi_cs_n),
+      .afe_dout_a(afe_dout_a_p),
+      .afe_dout_b(afe_dout_b_p),
+      .afe_dclk(afe_dclk_p),
+      .afe_fclk(1'b0),
+      .xray_prep_req(xray_prep_req),
+      .xray_enable(xray_enable),
+      .xray_on(xray_on),
+      .xray_off(xray_off),
+      .vgh_over(vgh_over),
+      .vgh_under(vgh_under),
+      .temp_over(temp_over),
+      .hw_emergency_n(hw_emergency_n),
+      .en_vgl(en_vgl),
+      .en_vgh(en_vgh),
+      .en_avdd1(en_avdd1),
+      .en_avdd2(en_avdd2),
+      .en_dvdd(en_dvdd)
+  );
+
+  assign irq_n = ~(irq_line_ready | irq_frame_done);
 
 endmodule

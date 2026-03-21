@@ -10,6 +10,7 @@ module mcu_data_if
     input  logic        data_valid,
     input  logic        line_start,
     input  logic        line_end,
+    input  logic        frame_done,
 
     // MCU parallel data bus
     output logic [PIXEL_WIDTH-1:0] mcu_data,
@@ -45,6 +46,9 @@ module mcu_data_if
 
       if (line_end) begin
         irq_line_ready <= 1'b1;
+      end
+
+      if (frame_done) begin
         irq_frame_done <= 1'b1;
       end
     end

@@ -41,6 +41,15 @@ module gate_nt39565d
 );
 
   logic gate_on_prev;
+  logic [15:0] cpv_count;
+  logic [15:0] stv_count;
+  logic        cpv_toggle;
+
+  function automatic logic [15:0] safe_period(input logic [15:0] value);
+    begin
+      safe_period = (value < 16'd500) ? 16'd500 : value;
+    end
+  endfunction
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -58,14 +67,43 @@ module gate_nt39565d
       cascade_complete <= 1'b0;
       row_done <= 1'b0;
       gate_on_prev <= 1'b0;
+      cpv_count <= '0;
+      stv_count <= '0;
+      cpv_toggle <= 1'b0;
     end else begin
       nt_lr <= scan_dir;
-      nt_stv1l <= gate_on_pulse && (row_index[0] == 1'b0);
-      nt_stv2l <= gate_on_pulse && (row_index[0] == 1'b1);
-      nt_stv1r <= gate_on_pulse && (chip_sel == 2'b01);
-      nt_stv2r <= gate_on_pulse && (chip_sel == 2'b10);
-      nt_cpv_l <= gate_on_pulse ? clk : 1'b0;
-      nt_cpv_r <= gate_on_pulse ? clk : 1'b0;
+      if (gate_on_pulse) begin
+        if (cpv_count + 16'd1 >= safe_period(cfg_cpv_period)) begin
+          cpv_count <= '0;
+          cpv_toggle <= ~cpv_toggle;
+        end else begin
+          cpv_count <= cpv_count + 16'd1;
+        end
+
+        if (stv_count < cfg_stv_pulse) begin
+          stv_count <= stv_count + 16'd1;
+          nt_stv1l <= (row_index[0] == 1'b0);
+          nt_stv2l <= (row_index[0] == 1'b1);
+          nt_stv1r <= (chip_sel == 2'b01);
+          nt_stv2r <= (chip_sel == 2'b10);
+        end else begin
+          nt_stv1l <= 1'b0;
+          nt_stv2l <= 1'b0;
+          nt_stv1r <= 1'b0;
+          nt_stv2r <= 1'b0;
+        end
+      end else begin
+        cpv_count <= '0;
+        stv_count <= '0;
+        cpv_toggle <= 1'b0;
+        nt_stv1l <= 1'b0;
+        nt_stv2l <= 1'b0;
+        nt_stv1r <= 1'b0;
+        nt_stv2r <= 1'b0;
+      end
+
+      nt_cpv_l <= gate_on_pulse ? cpv_toggle : 1'b0;
+      nt_cpv_r <= gate_on_pulse ? cpv_toggle : 1'b0;
       nt_oe1_l <= gate_on_pulse && !row_index[0];
       nt_oe1_r <= gate_on_pulse && !row_index[0];
       nt_oe2_l <= gate_on_pulse && row_index[0];

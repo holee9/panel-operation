@@ -67,7 +67,8 @@ SignalMap RegBankModel::get_outputs() const {
         {"cfg_ncols", regs_[kRegNCols] & 0x0FFFU},
         {"cfg_tline", regs_[kRegTLine]},
         {"cfg_treset", regs_[kRegTReset]},
-        {"cfg_tinteg", regs_[kRegTInteg]},
+        {"cfg_tinteg", (static_cast<uint32_t>(regs_[kRegTIntegHi] & 0x00FFU) << 16U) |
+                           static_cast<uint32_t>(regs_[kRegTInteg])},
         {"cfg_tgate_on", regs_[kRegTGateOn] & 0x0FFFU},
         {"cfg_tgate_settle", regs_[kRegTGateSettle] & 0xFFU},
         {"cfg_afe_ifs", regs_[kRegAfeIfs] & 0x3FU},

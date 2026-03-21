@@ -17,6 +17,8 @@ module panel_ctrl_fsm
     input  logic [23:0] cfg_tinteg,
     input  logic [11:0] cfg_nrows,
     input  logic [7:0]  cfg_nreset,
+    input  logic [7:0]  cfg_sync_dly,
+    input  logic [7:0]  cfg_tgate_settle,
     input  logic        radiography_mode,
 
     // X-ray generator interface
@@ -156,7 +158,7 @@ module panel_ctrl_fsm
           ST_READOUT_INIT: begin
             afe_config_req <= 1'b1;
             timer_count <= timer_count + 32'd1;
-            if (afe_config_done || timer_count >= 32'd8) begin
+            if (afe_config_done || timer_count >= cfg_sync_dly) begin
               timer_count <= '0;
               row_index <= 12'd0;
               gate_row_index <= 12'd0;
@@ -170,7 +172,8 @@ module panel_ctrl_fsm
             afe_start <= 1'b1;
             gate_row_index <= row_index;
             sts_line_idx <= row_index;
-            if (gate_row_done || afe_line_valid || cfg_mode == MODE_DARK_FRAME) begin
+            if ((cfg_mode != MODE_DARK_FRAME && gate_row_done && afe_line_valid) ||
+                (cfg_mode == MODE_DARK_FRAME && afe_line_valid)) begin
               if (row_index + 12'd1 >= cfg_nrows) begin
                 fsm_state <= ST_READOUT_DONE;
               end else begin
@@ -181,7 +184,7 @@ module panel_ctrl_fsm
 
           ST_READOUT_DONE: begin
             timer_count <= timer_count + 32'd1;
-            if (timer_count >= 32'd2) begin
+            if (timer_count >= cfg_tgate_settle) begin
               timer_count <= '0;
               fsm_state <= ST_DONE;
             end

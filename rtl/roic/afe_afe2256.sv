@@ -45,6 +45,10 @@ module afe_afe2256
 
   logic [15:0] line_count;
   logic [7:0]  cfg_count;
+  logic [31:0] mclk_accum;
+  logic [23:0] cfg_shift;
+  localparam logic [31:0] MCLK_STEP = 32'd1374389535;
+  localparam logic [15:0] TLINE_MIN = 16'd5120;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -61,18 +65,27 @@ module afe_afe2256
       afe_ready <= 1'b0;
       line_count <= '0;
       cfg_count <= '0;
+      mclk_accum <= '0;
+      cfg_shift <= '0;
     end else begin
       config_done <= 1'b0;
       afe_sync <= 1'b0;
-      afe_mclk <= ~afe_mclk;
+      mclk_accum <= mclk_accum + MCLK_STEP;
+      afe_mclk <= mclk_accum[31];
       afe_tp_sel <= cfg_tp_sel;
 
       if (config_req && !afe_ready) begin
+        if (cfg_count == 8'd0) begin
+          cfg_shift <= {cfg_ifs, cfg_cic_en, cfg_cic_profile, cfg_pipeline_en, cfg_tp_sel, cfg_nchip, 10'h155};
+        end
         afe_spi_cs_n <= 1'b0;
         afe_spi_sck <= ~afe_spi_sck;
-        afe_spi_sdi <= cfg_ifs[0] ^ cfg_cic_en ^ cfg_cic_profile[0] ^ cfg_pipeline_en ^ cfg_nchip[0];
-        cfg_count <= cfg_count + 8'd1;
-        if (cfg_count >= 8'd15) begin
+        if (!afe_spi_sck) begin
+          afe_spi_sdi <= cfg_shift[23];
+          cfg_shift <= {cfg_shift[22:0], afe_spi_sdo};
+          cfg_count <= cfg_count + 8'd1;
+        end
+        if (cfg_count >= 8'd23) begin
           afe_spi_cs_n <= 1'b1;
           afe_ready <= 1'b1;
           config_done <= 1'b1;
@@ -86,7 +99,7 @@ module afe_afe2256
         dout_window_valid <= 1'b1;
         fclk_expected <= 1'b1;
         line_count <= line_count + 16'd1;
-        if (line_count + 16'd1 >= cfg_tline) begin
+        if (line_count + 16'd1 >= ((cfg_tline < TLINE_MIN) ? TLINE_MIN : cfg_tline)) begin
           dout_window_valid <= 1'b0;
           fclk_expected <= 1'b0;
           line_count <= '0;

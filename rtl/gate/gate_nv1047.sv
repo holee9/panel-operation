@@ -34,6 +34,17 @@ module gate_nv1047
 );
 
   logic gate_on_prev;
+  logic [15:0] clk_div_count;
+  logic [11:0] shift_count;
+  logic [11:0] shift_reg;
+  logic        shift_active;
+  logic        shift_clk;
+
+  function automatic logic [15:0] safe_clk_period(input logic [15:0] value);
+    begin
+      safe_clk_period = (value < 16'd500) ? 16'd500 : value;
+    end
+  endfunction
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -47,16 +58,43 @@ module gate_nv1047
       nv_md <= 2'b00;
       row_done <= 1'b0;
       gate_on_prev <= 1'b0;
+      clk_div_count <= '0;
+      shift_count <= '0;
+      shift_reg <= '0;
+      shift_active <= 1'b0;
+      shift_clk <= 1'b0;
     end else begin
-      nv_sd1 <= row_index[0];
-      nv_sd2 <= row_index[1];
-      nv_clk <= gate_on_pulse ? clk : 1'b0;
+      if (gate_on_pulse && !gate_on_prev) begin
+        shift_reg <= row_index;
+        shift_count <= 12'd0;
+        clk_div_count <= '0;
+        shift_active <= 1'b1;
+        shift_clk <= 1'b0;
+      end else if (shift_active) begin
+        if (clk_div_count + 16'd1 >= safe_clk_period(cfg_clk_period)) begin
+          clk_div_count <= '0;
+          shift_clk <= ~shift_clk;
+          if (!shift_clk) begin
+            nv_sd1 <= shift_reg[11];
+            nv_sd2 <= shift_reg[10];
+            shift_reg <= {shift_reg[10:0], 1'b0};
+            if (shift_count + 12'd1 >= 12'd12) begin
+              shift_active <= 1'b0;
+            end
+            shift_count <= shift_count + 12'd1;
+          end
+        end else begin
+          clk_div_count <= clk_div_count + 16'd1;
+        end
+      end
+
+      nv_clk <= shift_active ? shift_clk : 1'b0;
       nv_oe <= ~gate_on_pulse;
       nv_ona <= ~reset_all;
       nv_lr <= scan_dir;
       nv_rst <= rst_n;
       nv_md <= cfg_mode;
-      row_done <= gate_on_prev && !gate_on_pulse;
+      row_done <= gate_on_prev && !gate_on_pulse && !shift_active;
       gate_on_prev <= gate_on_pulse;
     end
   end

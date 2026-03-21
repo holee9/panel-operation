@@ -12,10 +12,73 @@ module fpga_top_c3
     input  logic mcu_data_ack
 );
 
-  always_comb begin
-    spi_miso = 1'b0;
-    mcu_data = '0;
-    mcu_data_rdy = 1'b0;
-  end
+  logic irq_line_ready;
+  logic irq_frame_done;
+  logic unused_nv_sd1, unused_nv_sd2, unused_nv_clk, unused_nv_oe, unused_nv_ona, unused_nv_lr, unused_nv_rst;
+  logic [1:0] unused_nv_md;
+  logic nt_stv1l, nt_stv2l, nt_stv1r, nt_stv2r, nt_cpv_l, nt_cpv_r, nt_lr, nt_oe1_l, nt_oe1_r, nt_oe2_l, nt_oe2_r;
+  logic afe_aclk, afe_mclk, afe_sync, afe_tp_sel, afe_reset, afe_spi_sck, afe_spi_sdi, afe_spi_cs_n;
+
+  detector_core #(
+      .USE_AFE2256(1'b1),
+      .USE_NT_GATE(1'b0)
+  ) u_detector_core (
+      .clk_100mhz(clk_100mhz),
+      .rst_n(rst_n),
+      .spi_sclk(spi_sclk),
+      .spi_mosi(spi_mosi),
+      .spi_miso(spi_miso),
+      .spi_cs_n(spi_cs_n),
+      .mcu_data(mcu_data),
+      .mcu_data_rdy(mcu_data_rdy),
+      .mcu_data_ack(mcu_data_ack),
+      .irq_line_ready(irq_line_ready),
+      .irq_frame_done(irq_frame_done),
+      .nv_sd1(unused_nv_sd1),
+      .nv_sd2(unused_nv_sd2),
+      .nv_clk(unused_nv_clk),
+      .nv_oe(unused_nv_oe),
+      .nv_ona(unused_nv_ona),
+      .nv_lr(unused_nv_lr),
+      .nv_rst(unused_nv_rst),
+      .nv_md(unused_nv_md),
+      .nt_stv1l(nt_stv1l),
+      .nt_stv2l(nt_stv2l),
+      .nt_stv1r(nt_stv1r),
+      .nt_stv2r(nt_stv2r),
+      .nt_cpv_l(nt_cpv_l),
+      .nt_cpv_r(nt_cpv_r),
+      .nt_lr(nt_lr),
+      .nt_oe1_l(nt_oe1_l),
+      .nt_oe1_r(nt_oe1_r),
+      .nt_oe2_l(nt_oe2_l),
+      .nt_oe2_r(nt_oe2_r),
+      .afe_aclk(afe_aclk),
+      .afe_mclk(afe_mclk),
+      .afe_sync(afe_sync),
+      .afe_tp_sel(afe_tp_sel),
+      .afe_reset(afe_reset),
+      .afe_spi_sck(afe_spi_sck),
+      .afe_spi_sdi(afe_spi_sdi),
+      .afe_spi_sdo(1'b0),
+      .afe_spi_cs_n(afe_spi_cs_n),
+      .afe_dout_a(1'b0),
+      .afe_dout_b(1'b0),
+      .afe_dclk(clk_100mhz),
+      .afe_fclk(1'b0),
+      .xray_prep_req(1'b0),
+      .xray_enable(),
+      .xray_on(1'b0),
+      .xray_off(1'b0),
+      .vgh_over(1'b0),
+      .vgh_under(1'b0),
+      .temp_over(1'b0),
+      .hw_emergency_n(1'b1),
+      .en_vgl(),
+      .en_vgh(),
+      .en_avdd1(),
+      .en_avdd2(),
+      .en_dvdd()
+  );
 
 endmodule

@@ -45,7 +45,8 @@ module afe_ad711xx
 
   logic [15:0] line_count;
   logic [7:0]  cfg_count;
-  logic [1:0]  clk_div;
+  logic [2:0]  clk_div;
+  logic [23:0] cfg_shift;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -61,20 +62,28 @@ module afe_ad711xx
       line_count <= '0;
       cfg_count <= '0;
       clk_div <= '0;
+      cfg_shift <= '0;
     end else begin
       config_done <= 1'b0;
       afe_sync <= 1'b0;
-      clk_div <= clk_div + 2'd1;
-      if (clk_div == 2'd0) begin
+      clk_div <= clk_div + 3'd1;
+      if (clk_div == 3'd4) begin
         afe_aclk <= ~afe_aclk;
+        clk_div <= '0;
       end
 
       if (config_req && !afe_ready) begin
+        if (cfg_count == 8'd0) begin
+          cfg_shift <= {cfg_ifs, cfg_lpf, cfg_pmode, cfg_nchip, 8'hA5};
+        end
         afe_spi_cs_n <= 1'b0;
         afe_spi_sck <= ~afe_spi_sck;
-        afe_spi_sdi <= cfg_ifs[0] ^ cfg_lpf[0] ^ cfg_pmode[0] ^ line_idx[0];
-        cfg_count <= cfg_count + 8'd1;
-        if (cfg_count >= 8'd15) begin
+        if (!afe_spi_sck) begin
+          afe_spi_sdi <= cfg_shift[23];
+          cfg_shift <= {cfg_shift[22:0], line_idx[0]};
+          cfg_count <= cfg_count + 8'd1;
+        end
+        if (cfg_count >= 8'd23) begin
           afe_spi_cs_n <= 1'b1;
           afe_ready <= 1'b1;
           config_done <= 1'b1;

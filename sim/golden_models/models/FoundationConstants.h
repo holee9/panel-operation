@@ -28,6 +28,7 @@ constexpr uint8_t kRegSyncDly = 0x13;
 constexpr uint8_t kRegLineIdx = 0x14;
 constexpr uint8_t kRegErrCode = 0x15;
 constexpr uint8_t kRegNReset = 0x16;
+constexpr uint8_t kRegTIntegHi = 0x17;
 constexpr uint8_t kRegVersion = 0x1F;
 
 constexpr uint16_t kVersion10 = 0x0010;
@@ -53,6 +54,7 @@ inline std::array<uint16_t, 32> MakeDefaultRegisters() {
     regs[kRegAfeNChip] = 0x0001;
     regs[kRegSyncDly] = 0x0000;
     regs[kRegNReset] = 0x0003;
+    regs[kRegTIntegHi] = 0x0000;
     regs[kRegVersion] = kVersion10;
     return regs;
 }

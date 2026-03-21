@@ -4,6 +4,7 @@ module data_out_mux
 (
     input  logic        clk,
     input  logic        rst_n,
+    input  logic [11:0] cfg_ncols,
 
     // From line_buf_ram
     input  logic [PIXEL_WIDTH-1:0] line_pixel_data,
@@ -27,7 +28,7 @@ module data_out_mux
       mcu_pixel_data <= line_pixel_data;
       mcu_data_valid <= line_data_valid;
       mcu_line_start <= line_data_valid && (line_pixel_idx == 12'd0);
-      mcu_line_end <= line_data_valid && (line_pixel_idx == 12'd2047);
+      mcu_line_end <= line_data_valid && (line_pixel_idx + 12'd1 >= cfg_ncols);
     end
   end
 
