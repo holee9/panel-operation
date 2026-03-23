@@ -24,6 +24,8 @@ mem.prof
 # Build Artifacts & Distribution
 # ===========================================
 build/
+build-sim*/
+sim/build_sa/
 dist/
 *.egg-info/
 *.egg

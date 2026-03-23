@@ -4,7 +4,7 @@
 **기준 SPEC**: SPEC-FPD-SIM-001 v1.2.0 (52 R-SIM + 47 AC-SIM + 8 EC-SIM)
 **리뷰일**: 2026-03-23
 **빌드 검증**: TVR-FPD-SIM-001-001 (MSVC 19.40, 13/13 PASS)
-**분석 대상**: RTL 27개 모듈, 골든 모델 30개 클래스, C++ 테스트 13개(579 LOC), cocotb 14개+infra 2개(478 LOC)
+**분석 대상**: RTL 27개 모듈, 골든 모델 30개 클래스, C++ 테스트 14개(638 LOC), cocotb 14개+infra 2개(478 LOC), Verilator 8개
 **v8.0 개정**: v7.1 교차 검증 — RTL/모델/테스트 전수 코드 대조, 수치 보정, copilot 해결 사항 반영
 
 ---

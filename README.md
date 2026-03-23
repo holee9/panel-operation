@@ -457,16 +457,20 @@ sim/
 │   ├── test_panel_fsm.py            SPEC-002
 │   ├── test_csi2_tx.py              SPEC-007
 │   └── ...
-├── verilator/                       Cycle-accurate RTL comparison
-│   ├── sim_main.cpp                 Verilator top-level driver
-│   ├── golden_compare.h/cpp         C++ model vs RTL comparator
+├── verilator/                       Cycle-accurate RTL comparison (scaffold)
+│   ├── sim_main.cpp                 Verilator top-level driver (scaffold)
+│   ├── golden_compare.h/cpp         RunGoldenCompare() 프레임워크 (구현됨)
+│   ├── compare_spi.cpp              SPI 모델 vs RTL 비교기 (RTL 미바인딩)
+│   ├── compare_fsm.cpp              FSM 모델 vs RTL 비교기 (RTL 미바인딩)
+│   ├── compare_csi2.cpp             CSI-2 모델 vs RTL 비교기 (RTL 미바인딩)
+│   ├── waveform_dump.h/cpp          파형 덤프 (stub)
 │   ├── xilinx_behav/                Xilinx primitive behavioral wrappers
 │   │   ├── MMCME2_ADV_behav.sv
 │   │   ├── ISERDESE2_behav.sv
 │   │   ├── IDELAYE2_behav.sv
 │   │   ├── IBUFDS_behav.sv
 │   │   └── OSERDESE2_behav.sv
-│   └── Makefile
+│   └── Makefile                     Placeholder (Verilator 빌드 미구성)
 ├── tests/                           C++ unit tests (GoogleTest)
 │   ├── test_crc16.cpp
 │   ├── test_ecc.cpp
@@ -482,10 +486,11 @@ sim/
 | Core framework | 12 | ~900 | ~800 |
 | Golden models (30종) | 60 | ~4,200 | ~4,000 |
 | Vector generators | 6 | ~250 | ~600 |
-| C++ unit tests (13개) | 13 | **579** | ~1,800 |
+| C++ unit tests (14개) | 14 | **638** | ~1,800 |
 | cocotb tests (14+2) | 16 | **478** | ~3,400 |
-| Verilator + wrappers | 11 | ~200 (scaffold) | ~1,000 |
-| **Total** | **~118** | **~6,607** | **~11,600** |
+| Verilator framework | 8 | ~200 (scaffold+framework) | ~500 |
+| Verilator wrappers | 5 | ~200 | ~500 |
+| **Total** | **~121** | **~6,866** | **~11,600** |
 
 ---
 
@@ -631,9 +636,10 @@ sim/
 │   ├── test_safety.py               SPEC-008 (스모크)
 │   ├── test_integration.py          SPEC-009 (벡터 기반) NEW
 │   └── test_radiography.py          SPEC-010 (벡터 기반) NEW
-├── tests/                           C++ unit tests (GoogleTest, 13 files, 579 LOC, 73 assert)
+├── tests/                           C++ unit tests (GoogleTest, 14 files, 638 LOC, 76 assert)
 │   ├── test_panel_aux_models.cpp    리셋/적분/듀얼타임아웃/prot_mon (128 LOC, 13 assert) NEW
 │   ├── test_reg_bank.cpp            전 레지스터 RW + TLINE_MIN + NCOLS (73 LOC, 18 assert) ★
+│   ├── test_prot_mon.cpp            듀얼 타임아웃 독립 검증 (59 LOC, 3 assert) NEW
 │   ├── test_radiog_model.cpp        다크 프레임 + 평균화 (59 LOC, 5 assert)
 │   ├── test_afe_models.cpp          AD711xx IFS + AFE2256 + SPI + LVDS (47 LOC) NEW
 │   ├── test_data_path_models.cpp    LineBuf + DataOutMux + McuDataIf (47 LOC) NEW
@@ -648,7 +654,7 @@ sim/
 └── CMakeLists.txt                   Top-level build (golden_models + tests + generators)
 ```
 
-**sim/ 현황**: ~100개 파일 (C++ 골든 모델 30종, GoogleTest 13개 579 LOC, cocotb 14+2개 478 LOC, 벡터 생성기 6개)
+**sim/ 현황**: ~121개 파일 (C++ 골든 모델 30종, GoogleTest 14개 638 LOC 76 assert, cocotb 14+2개 478 LOC, 벡터 생성기 6개, Verilator 프레임워크 8개)
 
 상세 사양: [SPEC-FPD-SIM-001](.moai/specs/SPEC-FPD-SIM-001/plan.md)
 
