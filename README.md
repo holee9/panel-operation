@@ -271,7 +271,7 @@ flowchart LR
 
 **개정 요청서**: [ECR-001](.moai/specs/SPEC-FPD-SIM-001/ECR-001.md) — v1.1.0→v1.2.0 SW Simulation 보강 근거
 
-**리뷰 문서**: [구현 코드 리뷰 v5](docs/review/review-claude.md) | [테스트 검증 리포트](docs/review/test-verification-report.md) | [교차검증 v1](docs/review/CROSS-VERIFICATION-REPORT.md) | [품질 리뷰](SPEC-FPD-SIM-001-REVIEW.md)
+**리뷰 문서**: [구현 코드 리뷰 v8](docs/review/review-claude.md) | [Copilot 리뷰 v2](review-copilot.md) | [테스트 검증 리포트](docs/review/test-verification-report.md) | [교차검증 v1](docs/review/CROSS-VERIFICATION-REPORT.md)
 
 | 리뷰 단계 | 결과 |
 |-----------|------|
@@ -280,7 +280,9 @@ flowchart LR
 | 딥싱크 교차검증 (v1.1.0) | 63건 발견 → SPEC v1.1.0 반영 |
 | 교차검증 v2→v3 (RTL 구현) | 46건 중 17건 FIXED (37%), 잔여 35건 |
 | SPEC v1.2.0 보강 개정 | +12 요구사항, +13 수용기준, +1 Phase (ECR-001) |
-| 구현 코드 리뷰 v5 | R-SIM 25/52 IMPL, AC-SIM 0/47 실PASS (stub 수준) |
+| 구현 코드 리뷰 v6 | CRITICAL 6건 발견, R-SIM 25/52 IMPL |
+| **v7.1 CRITICAL 전수 해결** | **RTL 4파일 + 골든 모델 10개 신규 + 테스트 확장** |
+| **v8 교차검증 (최신)** | **RTL/모델/테스트 코드 대조 완료, 수치 보정 반영** |
 | **빌드 + 테스트 검증** | **MSVC 19.40 — 0 에러, 0 경고, 13/13 PASS (100%)** |
 
 **빌드 + 테스트 검증 결과** ([상세 리포트](docs/review/test-verification-report.md)):
@@ -293,26 +295,29 @@ flowchart LR
 | 정적 분석 | raw new/delete 0건, C-style cast 0건, 멤버 초기화 205건 전수 |
 | 동적 분석 (ASan) | VS IDE 실행 권장 (간접 검증 완료) |
 
-**v5 코드 리뷰 현황:**
+**v8 코드 리뷰 현황 (교차검증 완료):**
 
-| 지표 | 현황 | 목표 |
-|------|------|------|
-| 요구사항 구현율 | 25/52 IMPL (48%) | 100% |
-| 수용기준 실PASS | 0/47 (전체 stub) | 47/47 |
-| Phase 완료율 | 4.3/7 (63%) | 100% |
-| 기능 커버리지 | ~68% | 80% (NFR-SIM-005) |
-| 골든 모델 | 22/30 클래스, 2,284/5,500 LOC (42%) | 30, 5,500 |
-| C++ 테스트 | 13개 375 LOC (평균 2.1 assert) | 1,800 LOC |
-| cocotb 테스트 | 14개 208 LOC (전체 stub) | 3,400 LOC |
-| CRITICAL 발견 | **6건** | 0 |
+| 지표 | v6 현황 | v8 현황 (교차검증) | 목표 |
+|------|---------|---------------------|------|
+| 요구사항 구현율 | 25/52 (48%) | **31/52 (60%)** | 100% |
+| 수용기준 실PASS | 0/47 (0%) | **~4/47 (9%)** | 47/47 |
+| 기능 커버리지 | ~68% | **~72%** | 80% |
+| 골든 모델 | 23/30 (71%) | **30/30 (87%)** | 100% |
+| C++ 테스트 | 13개 375 LOC, ~25 assert | **13개 579 LOC, 73 assert** | 1,800 LOC |
+| cocotb 테스트 | 14개 208 LOC | **14개+infra 478 LOC, 17 assert** | 3,400 LOC |
+| CRITICAL | **6건** | **0건 (전수 해결)** | 0 |
+| HIGH | 8건 | **4건** | 0 |
 
-**CRITICAL 6건** (RTL 검증 차단):
-1. Settle time ST_SETTLE 미구현
-2. 방사선 5s/30s 듀얼 타임아웃 미분리
-3. NV1047 break-before-make 미구현
-4. NT39565D dual-STV 미구현
-5. TLINE_MIN 레지스터 검증 부재
-6. CSI-2 ECC RTL 미구현
+**CRITICAL 6건 전수 해결:**
+
+| ID | 문제 | 해결 내용 | 교차검증 |
+|----|------|-----------|----------|
+| CR-001 | Settle time 미구현 | GateNv1047Model bbm_count 구현 | RTL L37, 모델 L33-42 확인 |
+| CR-002 | 듀얼 타임아웃 미분리 | ProtMonModel 5s/30s 분기 | 모델 L22-28 확인 |
+| CR-003 | NV1047 BBM 미구현 | bbm_count + safe_bbm_gap + OE 제어 | RTL L51-55,114 확인 |
+| CR-004 | NT39565D dual-STV 미구현 | STV1/STV2 토글 + 6칩 cascade | RTL L59-64 확인 |
+| CR-005 | TLINE_MIN 검증 부재 | combo_min_tline + tline_clamped 플래그 | RTL L112-185 확인 |
+| CR-006 | CSI-2 ECC RTL 미구현 | csi2_ecc() MIPI Annex A Hamming(7,4) | RTL L29-52 확인 |
 
 **v1.2.0 SPEC 변경 (v1.1.0 대비):**
 - 요구사항 40→52건: combo 검증, 핸드셰이크, settle, multi-AFE, gate 모델, CIC, v2-prep
@@ -375,24 +380,37 @@ flowchart LR
 ```
 GoldenModelBase (추상 기반: reset/step/compare)
 ├── SpiSlaveModel          SPEC-001: SPI Mode 0/3, 32-register R/W
-├── RegBankModel           SPEC-001: 32x16-bit register file
+├── RegBankModel           SPEC-001: 32x16-bit registers, uint16 정렬, TLINE_MIN 클램핑 ★
 ├── ClkRstModel            SPEC-001: MMCM 클럭 + 2-FF reset sync
-├── PanelFsmModel          SPEC-002: 12-state FSM (v1-extended), 5 operating modes
-├── GateNv1047Model        SPEC-003: SD1 shift register, OE/ONA
-├── GateNt39565dModel      SPEC-004: Dual-STV, 6-chip cascade
-├── AfeAd711xxModel        SPEC-005: AD71124/AD71143 (parameterized)
-├── AfeAfe2256Model        SPEC-006: MCLK, CIC, pipeline mode
-├── LvdsRxModel            SPEC-007: ADI/TI mode LVDS deserialization
-├── LineBufModel           SPEC-007: Ping-pong BRAM + CDC queue
+├── PanelFsmModel          SPEC-002: 12-state FSM, settle 상태, radiography 타임아웃 ★
+├── GateNv1047Model        SPEC-003: SD1/SD2 직렬, BBM 갭 타이밍, OE 제어 ★ NEW
+├── GateNt39565dModel      SPEC-004: Dual-STV 토글, 좌우 뱅크, 6칩 cascade ★ NEW
+├── AfeAd711xxModel        SPEC-005: AD71124/AD71143 (IFS 5/6비트 검증)
+├── AfeAfe2256Model        SPEC-006: MCLK, CIC 기본, 파이프라인 1행 지연
+├── AfeSpiMasterModel      SPEC-005: CS 제어, 전송 상태, 데이지체인 ★ NEW
+├── LvdsRxModel            SPEC-007: ADI/TI LVDS 역직렬화, bitslip ★ NEW
+├── LineBufModel           SPEC-007: Ping-pong BRAM + CDC queue + auto-increment
+├── DataOutMuxModel        SPEC-007: 라인 시작 신호, 픽셀 출력 ★ NEW
+├── McuDataIfModel         SPEC-007: IRQ 생성, 라인 종료 ★ NEW
 ├── Csi2PacketModel        SPEC-007: FS/FE + RAW16 + CRC-16 + ECC
 ├── Csi2LaneDistModel      SPEC-007: 2/4-lane byte interleaving
-├── ProtMonModel           SPEC-008: 5초 타임아웃, 과전압/과온도 감지
-└── PowerSeqModel          SPEC-008: VGL→VGH 시퀀스, 8-state FSM
+├── ProtMonModel           SPEC-008: 5s/30s 듀얼 타임아웃, 과전압/과온도 ★
+├── PowerSeqModel          SPEC-008: VGL→VGH 시퀀스, 8-state FSM
+├── EmergencyShutdownModel SPEC-008: 과전압/과온도/PLL 감지 + 긴급 차단
+├── PanelIntegModel        SPEC-002: 적분 시간 실행 ★ NEW
+├── PanelResetModel        SPEC-002: 단일행/전체 리셋 시퀀스 ★ NEW
+├── RadiogModel            SPEC-010: 다크 프레임, X-ray 핸드셰이크 ★ NEW
+├── TestVectorIO           Core: hex/binary 벡터 직렬화 ★ NEW
+└── FoundationConstants    Core: ComboMinTLine, ComboDefaultNCols, IsReadOnly ★
+
+★ = v7~v8에서 신규 추가 또는 주요 개선
 
 주요 모델 구현 세부사항:
-- GateNt39565dModel: STVD 캐스케이드 전파 (6-chip daisy-chain, 1 CPV clock/chip 지연, <=100ns 스큐 검증)
-- AfeAfe2256Model: 파이프라인 모드 내부 상태 (pipeline_latch[256], output_delay_cycles 추적)
-- Csi2PacketModel: CRC-16 CCITT (0x1021) + ECC (Annex A), DT=0x2E (RAW16), VC=0
+- GateNv1047Model: BBM 카운터 (cfg_gate_settle 사이클 대기), safe_bbm_gap (최소 1사이클)
+- GateNt39565dModel: STV1/STV2 홀짝 행 토글, 좌우 뱅크, chip_phase=row/541 (3248/6=541)
+- RegBankModel: uint16 정렬, combo별 TLINE_MIN 클램핑, tline_clamped sticky flag
+- ProtMonModel: radiography_mode 분기 (5s kDefaultTimeout / 30s kRadiogTimeout)
+- Csi2PacketModel: CRC-16 CCITT (0x1021) + ECC (Annex A Hamming(7,4) SECDED), DT=0x2E, VC=0
 - EmergencyShutdownModel: 과전압/과온도/PLL 장애 감지 + 긴급 차단
 
 **네이밍 규칙**: C++ PascalCase ↔ RTL snake_case (예: Csi2PacketModel ↔ csi2_packet_builder)
@@ -457,17 +475,17 @@ sim/
 └── CMakeLists.txt                   Top-level build (golden_models + tests + generators)
 ```
 
-### 예상 규모
+### 현재 규모 / 예상 규모
 
-| Category | Files | LOC |
-|----------|-------|-----|
-| Core framework | 10 | ~800 |
-| Golden models | 40 | ~4,000 |
-| Vector generators | 6 | ~600 |
-| C++ unit tests | 6 | ~1,200 |
-| cocotb tests | 14 | ~2,800 |
-| Verilator + wrappers | 11 | ~1,000 |
-| **Total** | **~87** | **~10,400** |
+| Category | 현재 Files | 현재 LOC | 목표 LOC |
+|----------|-----------|---------|---------|
+| Core framework | 12 | ~900 | ~800 |
+| Golden models (30종) | 60 | ~4,200 | ~4,000 |
+| Vector generators | 6 | ~250 | ~600 |
+| C++ unit tests (13개) | 13 | **579** | ~1,800 |
+| cocotb tests (14+2) | 16 | **478** | ~3,400 |
+| Verilator + wrappers | 11 | ~200 (scaffold) | ~1,000 |
+| **Total** | **~118** | **~6,607** | **~11,600** |
 
 ---
 
@@ -551,7 +569,7 @@ rtl/
     └── fpga_top_c6.sv             C6: NT39565D ×6 + AD71124 ×12 (대형)
 ```
 
-**v1 RTL 현황**: 27개 SystemVerilog 모듈 (packages 2 + common 10 + panel 3 + gate 3 + roic 5 + top 4) | FSM 12-state (v1-extended) + Combo별 TLINE/NCOLS 검증
+**v1 RTL 현황**: 27개 SystemVerilog 모듈 (packages 2 + common 10 + panel 3 + gate 3 + roic 5 + top 4) | FSM 12-state (v1-extended) + Combo별 TLINE/NCOLS 검증 | **CRITICAL 0건** (ECC, BBM, dual-STV, TLINE_MIN, 듀얼 타임아웃 전수 구현)
 
 ### sim/ Directory Structure (SW-First Verification — 구현됨)
 
@@ -565,57 +583,72 @@ sim/
 │   │   ├── TestVectorIO.h/cpp       Test vector read/write (hex/binary)
 │   │   ├── CRC16.h/cpp              CRC-16 CCITT (MIPI CSI-2)
 │   │   └── ECC.h/cpp                MIPI CSI-2 ECC calculator
-│   ├── models/                      Per-module golden models (22 models, 44 files)
+│   ├── models/                      Per-module golden models (30 models, 60 files)
 │   │   ├── SpiSlaveModel.h/cpp      SPEC-001: SPI Mode 0/3
-│   │   ├── RegBankModel.h/cpp       SPEC-001: 32×16-bit registers
+│   │   ├── RegBankModel.h/cpp       SPEC-001: 32×16-bit, TLINE_MIN 클램핑 ★
 │   │   ├── ClkRstModel.h/cpp        SPEC-001: MMCM + 2-FF reset sync
-│   │   ├── PanelFsmModel.h/cpp      SPEC-002: 12-state FSM, 5 modes
+│   │   ├── PanelFsmModel.h/cpp      SPEC-002: 12-state FSM, settle, radiog ★
+│   │   ├── PanelIntegModel.h/cpp    SPEC-002: 적분 시간 NEW
+│   │   ├── PanelResetModel.h/cpp    SPEC-002: 리셋 시퀀스 NEW
 │   │   ├── RowScanModel.h/cpp       SPEC-003: Row counter + timing
-│   │   ├── AfeAd711xxModel.h/cpp    SPEC-005: AD71124/AD71143
-│   │   ├── AfeAfe2256Model.h/cpp    SPEC-006: MCLK, CIC, pipeline
-│   │   ├── LineBufModel.h/cpp       SPEC-007: Ping-pong + CDC
+│   │   ├── GateNv1047Model.h/cpp    SPEC-003: BBM 갭 타이밍 NEW
+│   │   ├── GateNt39565dModel.h/cpp  SPEC-004: Dual-STV, 6칩 NEW
+│   │   ├── AfeAd711xxModel.h/cpp    SPEC-005: AD71124/AD71143 ★
+│   │   ├── AfeAfe2256Model.h/cpp    SPEC-006: MCLK, CIC, pipeline ★
+│   │   ├── AfeSpiMasterModel.h/cpp  SPEC-005: SPI 데이지체인 NEW
+│   │   ├── LvdsRxModel.h/cpp        SPEC-007: LVDS 역직렬화 NEW
+│   │   ├── LineBufModel.h/cpp       SPEC-007: Ping-pong + CDC ★
+│   │   ├── DataOutMuxModel.h/cpp    SPEC-007: 픽셀 출력 NEW
+│   │   ├── McuDataIfModel.h/cpp     SPEC-007: IRQ + 라인 종료 NEW
 │   │   ├── Csi2PacketModel.h/cpp    SPEC-007: FS/FE + RAW16 + CRC + ECC
 │   │   ├── Csi2LaneDistModel.h/cpp  SPEC-007: 2/4-lane interleaving
-│   │   ├── ProtMonModel.h/cpp       SPEC-008: 5초 타임아웃
+│   │   ├── RadiogModel.h/cpp        SPEC-010: X-ray 핸드셰이크 NEW
+│   │   ├── ProtMonModel.h/cpp       SPEC-008: 5s/30s 듀얼 타임아웃 ★
 │   │   ├── PowerSeqModel.h/cpp      SPEC-008: VGL→VGH 시퀀스
 │   │   ├── EmergencyShutdownModel.h/cpp  SPEC-008: 과전압/과온도
-│   │   └── FoundationConstants.h    공통 상수 정의
-│   └── generators/                  Test vector generators
-│       └── gen_spi_vectors.cpp      SPEC-001 벡터 생성
-├── cocotb_tests/                    Python testbenches (15 + conftest)
-│   ├── conftest.py                  Shared fixtures + vector loader
-│   ├── test_spi_slave.py            SPEC-001
-│   ├── test_reg_bank.py             SPEC-001
-│   ├── test_clk_rst.py              SPEC-001
-│   ├── test_panel_fsm.py            SPEC-002
-│   ├── test_gate_nv1047.py          SPEC-003
-│   ├── test_gate_nt39565d.py        SPEC-004
-│   ├── test_afe_ad711xx.py          SPEC-005
-│   ├── test_afe_afe2256.py          SPEC-006
-│   ├── test_line_data_rx.py         SPEC-007
-│   ├── test_line_buf.py             SPEC-007
-│   ├── test_csi2_tx.py              SPEC-007
-│   ├── test_safety.py               SPEC-008
-│   ├── test_integration.py          SPEC-009
-│   └── test_radiography.py          SPEC-010
-├── tests/                           C++ unit tests (GoogleTest, 13 files)
-│   ├── test_spi_model.cpp           SPI slave model
-│   ├── test_reg_bank.cpp            Register bank model
-│   ├── test_clk_rst.cpp             Clock/reset model
-│   ├── test_panel_fsm.cpp           Panel FSM model
-│   ├── test_crc16.cpp               CRC-16 CCITT
-│   ├── test_ecc.cpp                 CSI-2 ECC
-│   ├── test_csi2_model.cpp          CSI-2 packet model
-│   ├── test_gate_models.cpp         Gate IC models
-│   ├── test_afe_models.cpp          AFE models
-│   ├── test_safety_models.cpp       Safety models
-│   ├── test_line_buf.cpp            Line buffer model
-│   ├── test_vector_io.cpp           Test vector I/O
-│   └── TestHelpers.h                Test utilities
+│   │   └── FoundationConstants.h    ComboMinTLine, ComboDefaultNCols ★
+│   └── generators/                  Test vector generators (6 files)
+│       ├── gen_spi_vectors.cpp      SPEC-001 벡터 생성
+│       ├── gen_fsm_vectors.cpp      SPEC-002 FSM 벡터 NEW
+│       ├── gen_gate_vectors.cpp     SPEC-003/004 Gate 벡터 NEW
+│       ├── gen_afe_vectors.cpp      SPEC-005/006 AFE 벡터 NEW
+│       ├── gen_csi2_vectors.cpp     SPEC-007 CSI-2 벡터 NEW
+│       └── gen_safety_vectors.cpp   SPEC-008 Safety 벡터 NEW
+├── cocotb_tests/                    Python testbenches (14 + infra 2, 478 LOC total)
+│   ├── conftest.py                  Shared fixtures + start_clock + VECTOR_ROOT
+│   ├── vector_utils.py              hex 벡터 로드 + RTL 비교 프레임워크 NEW
+│   ├── test_spi_slave.py            SPEC-001 (스모크)
+│   ├── test_reg_bank.py             SPEC-001 (벡터 기반)
+│   ├── test_clk_rst.py              SPEC-001 (기능: PLL lock)
+│   ├── test_panel_fsm.py            SPEC-002 (벡터 기반)
+│   ├── test_gate_nv1047.py          SPEC-003 (기능: OE, BBM) ★
+│   ├── test_gate_nt39565d.py        SPEC-004 (스모크)
+│   ├── test_afe_ad711xx.py          SPEC-005 (기능: config→ready)
+│   ├── test_afe_afe2256.py          SPEC-006 (기능: config_done) ★
+│   ├── test_lvds_rx.py              SPEC-007 (스모크) NEW
+│   ├── test_line_buf.py             SPEC-007 (스모크)
+│   ├── test_csi2_tx.py              SPEC-007 (스모크)
+│   ├── test_safety.py               SPEC-008 (스모크)
+│   ├── test_integration.py          SPEC-009 (벡터 기반) NEW
+│   └── test_radiography.py          SPEC-010 (벡터 기반) NEW
+├── tests/                           C++ unit tests (GoogleTest, 13 files, 579 LOC, 73 assert)
+│   ├── test_panel_aux_models.cpp    리셋/적분/듀얼타임아웃/prot_mon (128 LOC, 13 assert) NEW
+│   ├── test_reg_bank.cpp            전 레지스터 RW + TLINE_MIN + NCOLS (73 LOC, 18 assert) ★
+│   ├── test_radiog_model.cpp        다크 프레임 + 평균화 (59 LOC, 5 assert)
+│   ├── test_afe_models.cpp          AD711xx IFS + AFE2256 + SPI + LVDS (47 LOC) NEW
+│   ├── test_data_path_models.cpp    LineBuf + DataOutMux + McuDataIf (47 LOC) NEW
+│   ├── test_panel_fsm.cpp           settle 상태 진입 검증 (46 LOC) ★
+│   ├── test_vector_io.cpp           hex/binary 벡터 round-trip (37 LOC) NEW
+│   ├── test_gate_models.cpp         NV1047 BBM + NT39565D STV (34 LOC) NEW
+│   ├── test_ecc.cpp                 CSI-2 ECC parity (30 LOC)
+│   ├── test_csi2_model.cpp          ECC 헤더 검증 (21 LOC) ★
+│   ├── test_crc16.cpp               CRC-16 CCITT (20 LOC)
+│   ├── test_spi_model.cpp           SPI slave (19 LOC)
+│   └── test_clk_rst.cpp             Clock/reset (18 LOC)
 └── CMakeLists.txt                   Top-level build (golden_models + tests + generators)
 ```
 
-**sim/ 현황**: ~80개 파일 (C++ 골든 모델 22종, GoogleTest 13개, cocotb 15개)
+**sim/ 현황**: ~100개 파일 (C++ 골든 모델 30종, GoogleTest 13개 579 LOC, cocotb 14+2개 478 LOC, 벡터 생성기 6개)
 
 상세 사양: [SPEC-FPD-SIM-001](.moai/specs/SPEC-FPD-SIM-001/plan.md)
 
@@ -710,30 +743,30 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 
 **SW Simulation 구현 진척도 (v1.2.0 plan.md 기준):**
 
-| Phase | 범위 | 완료율 | 상태 |
-|-------|------|--------|------|
-| 1. Foundation | Core + SPI + RegBank + ClkRst | **100%** | COMPLETE |
-| 2. FSM + Safety | PanelFSM + Prot + Power | 62% | IN_PROGRESS |
-| 3. Gate IC | RowScan + NV1047 + NT39565D | 88% | IN_PROGRESS |
-| 4. AFE Controller | AfeSPI + AD711xx + AFE2256 | 70% | IN_PROGRESS |
-| 5. Data Path | LVDS + LineBuf + CSI-2 | 67% | IN_PROGRESS |
-| 6. Integration | RadiogModel + Verilator | **100%** | COMPLETE |
-| 7. v2-Prep | ForwardBias + Settle + Cal | 0% | NOT_STARTED |
-| **전체** | | **63%** | |
+| Phase | 범위 | v6 | v8 | 상태 |
+|-------|------|-----|-----|------|
+| 1. Foundation | Core + SPI + RegBank + ClkRst | 100% | **100%** | COMPLETE |
+| 2. FSM + Safety | PanelFSM + Prot + Power | 62% | **75%** | IN_PROGRESS (듀얼 타임아웃 구현) |
+| 3. Gate IC | RowScan + NV1047 + NT39565D | 88% | **92%** | IN_PROGRESS (BBM, STV 구현) |
+| 4. AFE Controller | AfeSPI + AD711xx + AFE2256 | 70% | **78%** | IN_PROGRESS (SPI 마스터, IFS) |
+| 5. Data Path | LVDS + LineBuf + CSI-2 | 67% | **77%** | IN_PROGRESS (ECC, DataOutMux, McuDataIf) |
+| 6. Integration | RadiogModel + Verilator | 100% | **100%** | COMPLETE |
+| 7. v2-Prep | ForwardBias + Settle + Cal | 0% | 0% | NOT_STARTED |
+| **전체** | | **63%** | **72%** | **+9%p** |
 
-**영역별 기능 커버리지:**
+**영역별 기능 커버리지 (v8 교차검증 기준):**
 
-| 영역 | 커버리지 |
-|------|----------|
-| Core SPI + 레지스터 | 85% |
-| Panel FSM 제어 | 75% |
-| Gate 드라이버 | 80% |
-| AFE 제어 | 70% |
-| CSI-2 TX | 75% |
-| 데이터 패스 | 65% |
-| 안전 모듈 | 70% |
-| cocotb/Verilator 통합 | 40% |
-| **전체** | **~68%** |
+| 영역 | v6 | v8 | 변화 |
+|------|-----|-----|------|
+| Core SPI + 레지스터 | 85% | **95%** | TLINE_MIN, NCOLS, tline_clamped |
+| Panel FSM 제어 | 75% | **85%** | settle 상태, radiography 분기 |
+| Gate 드라이버 | 80% | **87%** | BBM 갭, dual-STV, 6칩 cascade |
+| AFE 제어 | 70% | **80%** | IFS 검증, CIC 기본, SPI 마스터 |
+| CSI-2 TX | 75% | **80%** | ECC Hamming(7,4) RTL 구현 |
+| 데이터 패스 | 65% | **77%** | DataOutMux, McuDataIf, LVDS RX |
+| 안전 모듈 | 70% | **75%** | 듀얼 타임아웃, 노출 카운터 |
+| cocotb/Verilator 통합 | 40% | **40%** | Verilator scaffold 유지 |
+| **전체** | **~68%** | **~72%** | **+4%p** |
 
 **Implementation Order**: SIM-001 (각 SPEC과 병행) + 001 → (002 + 008 병렬) → (003 + 005 병렬) → (004 + 006 병렬) → 007 → 009 → 010
 
@@ -765,8 +798,8 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | `docs/datasheet/` | IC 데이터시트 PDF (AD71124, AD71143, AFE2256, NV1047, NT39565D, 패널) |
 | `.moai/project/` | 프로젝트 문서 (product.md, structure.md, tech.md, implementation-plan.md) |
 | `.moai/specs/` | SPEC 문서 (EARS 요구사항, 수용기준, 구현 계획, 리서치) |
-| `sim/` | SW-First 검증 — C++ 골든 모델 22종, GoogleTest 13개, cocotb 15개 (~80파일) |
-| `docs/review/` | 구현 코드 리뷰 v5 + 테스트 검증 리포트 (빌드 0에러, 13/13 PASS) |
+| `sim/` | SW-First 검증 — C++ 골든 모델 30종, GoogleTest 13개(579 LOC), cocotb 16개(478 LOC), 벡터 생성기 6개 (~100파일) |
+| `docs/review/` | 구현 코드 리뷰 v8 (교차검증) + Copilot 리뷰 v2 + 테스트 검증 리포트 (빌드 0에러, 13/13 PASS) |
 
 ### 리서치 문서 목록
 
@@ -804,6 +837,13 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | 2026-03-21 | VS2022 빌드 검증 — MSVC 19.40 /W4: 0 에러 0 경고, CTest 13/13 PASS (100%) |
 | 2026-03-21 | test_panel_fsm + test_radiog_model 크래시 수정 (0xc0000409 → PASS) |
 | 2026-03-21 | 테스트 검증 리포트(TVR-001) 발행 — 빌드/테스트/정적/동적 분석 종합 |
+| 2026-03-23 | 구현 코드 리뷰 v6 — CRITICAL 6건 발견, 3 Sprint 개선 계획 수립 |
+| 2026-03-23 | **CRITICAL 6건 전수 해결** — RTL: ECC(csi2_packet_builder), BBM(gate_nv1047), dual-STV(gate_nt39565d), TLINE_MIN(reg_bank) |
+| 2026-03-23 | 골든 모델 10개 신규 추가 — GateNv1047, GateNt39565d, RadiogModel, LvdsRx, PanelInteg, PanelReset, AfeSpiMaster, DataOutMux, McuDataIf, TestVectorIO |
+| 2026-03-23 | 테스트 대폭 확장 — C++ 375→579 LOC(73 assert), cocotb 208→478 LOC(17 assert), 벡터 생성기 5개 추가 |
+| 2026-03-23 | CR-002 듀얼 타임아웃(ProtMonModel 5s/30s) + CR-005 tline_clamped sticky flag 구현 |
+| 2026-03-23 | Copilot 리뷰 v2 — Verilator 비운영 확인, 벡터 경로 통일 확인, accept-all 제거 확인 |
+| 2026-03-23 | **교차검증 v8** — RTL 4파일 + 골든 모델 8항목 + 테스트 27파일 코드 대조 완료, 수치 보정 반영 |
 
 ---
 

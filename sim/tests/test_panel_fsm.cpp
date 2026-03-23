@@ -22,14 +22,19 @@ int main() {
         });
 
         bool seen_done = false;
+        bool seen_settle = false;
         for (int i = 0; i < 20; ++i) {
             model.step();
+            if (fpd::sim::GetScalar(model.get_outputs(), "fsm_state") == 8U) {
+                seen_settle = true;
+            }
             if (fpd::sim::GetScalar(model.get_outputs(), "sts_done") == 1U) {
                 seen_done = true;
                 break;
             }
         }
 
+        Expect(seen_settle, "Panel FSM should visit the settle state before done");
         Expect(seen_done, "Panel FSM should assert done within 20 cycles");
 
         std::cout << "test_panel_fsm passed\n";

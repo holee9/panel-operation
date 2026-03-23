@@ -2,6 +2,7 @@
 
 #include "golden_models/core/CRC16.h"
 #include "golden_models/core/ECC.h"
+#include "golden_models/core/TestVectorIO.h"
 
 namespace fpd::sim {
 
@@ -67,7 +68,18 @@ std::vector<Mismatch> Csi2PacketModel::compare(const SignalMap& rtl_outputs) con
 }
 
 void Csi2PacketModel::generate_vectors(const std::string& output_dir) {
-    (void)output_dir;
+    TestVectorFile vectors;
+    vectors.module_name = "csi2_packet_builder";
+    vectors.spec_name = "SPEC-FPD-007";
+    vectors.clock_name = "sys_clk";
+    vectors.signal_inputs = {"pixels"};
+    vectors.signal_outputs = {"packet_size", "crc16"};
+    reset();
+    set_inputs({{"pixels", std::vector<uint16_t>{0x1234U, 0x5678U}}});
+    step();
+    vectors.vectors.push_back({cycle(), {{"pixels", std::vector<uint16_t>{0x1234U, 0x5678U}}}, get_outputs()});
+    WriteHexVectors(vectors, output_dir + "/csi2_packet_vectors.hex");
+    WriteBinaryVectors(vectors, output_dir + "/csi2_packet_vectors.bin");
 }
 
 }  // namespace fpd::sim

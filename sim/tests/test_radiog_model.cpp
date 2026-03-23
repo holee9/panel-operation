@@ -7,8 +7,12 @@ int main() {
     try {
         fpd::sim::RadiogModel model;
         model.reset();
-        model.set_inputs({{"start", 1U}, {"xray_ready", 1U}, {"xray_on", 1U}, {"xray_off", 1U}, {"cfg_tsettle", 1U}});
-        for (int i = 0; i < 4; ++i) {
+        model.set_inputs({{"start", 1U}, {"xray_ready", 1U}, {"cfg_tsettle", 1U}, {"cfg_prep_timeout", 8U}});
+        model.step();
+        model.set_inputs({{"xray_ready", 1U}, {"xray_on", 1U}, {"cfg_tsettle", 1U}, {"cfg_prep_timeout", 8U}});
+        model.step();
+        model.set_inputs({{"xray_ready", 1U}, {"xray_off", 1U}, {"cfg_tsettle", 1U}, {"cfg_prep_timeout", 8U}});
+        for (int i = 0; i < 2; ++i) {
             model.step();
         }
         Expect(fpd::sim::GetScalar(model.get_outputs(), "done") == 1U, "radiography flow should reach done");
@@ -20,6 +24,18 @@ int main() {
             {"frame_valid", 1U},
             {"cfg_dark_cnt", 2U},
             {"frame_pixels", std::vector<uint16_t>{10U, 20U, 30U, 40U}}
+        });
+        model.step();
+        Expect(fpd::sim::GetScalar(model.get_outputs(), "dark_frames_captured") == 1U,
+               "dark frame capture should start on the rising edge only");
+        model.step();
+        Expect(fpd::sim::GetScalar(model.get_outputs(), "dark_frames_captured") == 1U,
+               "dark frame capture should not duplicate while frame_valid stays high");
+        model.set_inputs({
+            {"dark_frame_mode", 1U},
+            {"frame_valid", 0U},
+            {"cfg_dark_cnt", 2U},
+            {"frame_pixels", std::vector<uint16_t>{14U, 24U, 34U, 44U}}
         });
         model.step();
         model.set_inputs({

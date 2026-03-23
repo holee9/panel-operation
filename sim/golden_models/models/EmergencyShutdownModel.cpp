@@ -1,5 +1,7 @@
 #include "golden_models/models/EmergencyShutdownModel.h"
 
+#include "golden_models/core/TestVectorIO.h"
+
 namespace fpd::sim {
 
 void EmergencyShutdownModel::reset() {
@@ -63,7 +65,18 @@ std::vector<Mismatch> EmergencyShutdownModel::compare(const SignalMap& rtl_outpu
 }
 
 void EmergencyShutdownModel::generate_vectors(const std::string& output_dir) {
-    (void)output_dir;
+    TestVectorFile vectors;
+    vectors.module_name = "emergency_shutdown";
+    vectors.spec_name = "SPEC-FPD-008";
+    vectors.clock_name = "sys_clk";
+    vectors.signal_inputs = {"vgh_over", "vgh_under", "temp_over", "pll_unlocked", "hw_emergency_n"};
+    vectors.signal_outputs = {"shutdown_req", "force_gate_off", "shutdown_code"};
+    reset();
+    set_inputs({{"vgh_over", 1U}, {"hw_emergency_n", 1U}});
+    step();
+    vectors.vectors.push_back({cycle(), {{"vgh_over", 1U}, {"hw_emergency_n", 1U}}, get_outputs()});
+    WriteHexVectors(vectors, output_dir + "/emergency_vectors.hex");
+    WriteBinaryVectors(vectors, output_dir + "/emergency_vectors.bin");
 }
 
 }  // namespace fpd::sim

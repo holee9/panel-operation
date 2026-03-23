@@ -1,5 +1,7 @@
 #include "golden_models/models/RowScanModel.h"
 
+#include "golden_models/core/TestVectorIO.h"
+
 namespace fpd::sim {
 
 void RowScanModel::reset() {
@@ -68,7 +70,20 @@ std::vector<Mismatch> RowScanModel::compare(const SignalMap& rtl_outputs) const 
 }
 
 void RowScanModel::generate_vectors(const std::string& output_dir) {
-    (void)output_dir;
+    TestVectorFile vectors;
+    vectors.module_name = "row_scan_eng";
+    vectors.spec_name = "SPEC-FPD-003";
+    vectors.clock_name = "sys_clk";
+    vectors.signal_inputs = {"scan_start", "scan_abort", "scan_dir", "cfg_nrows"};
+    vectors.signal_outputs = {"row_index", "gate_on_pulse", "gate_settle", "scan_active", "row_done", "scan_done"};
+    reset();
+    set_inputs({{"scan_start", 1U}, {"scan_dir", 0U}, {"cfg_nrows", 2U}});
+    for (int i = 0; i < 4; ++i) {
+        step();
+        vectors.vectors.push_back({cycle(), {{"scan_start", 1U}, {"scan_dir", 0U}, {"cfg_nrows", 2U}}, get_outputs()});
+    }
+    WriteHexVectors(vectors, output_dir + "/row_scan_vectors.hex");
+    WriteBinaryVectors(vectors, output_dir + "/row_scan_vectors.bin");
 }
 
 }  // namespace fpd::sim

@@ -16,10 +16,11 @@ public:
 private:
     uint32_t state_ = 0;
     uint32_t mode_ = 0;
-    uint32_t nrows_ = 2048;
-    uint32_t treset_ = 100;
-    uint32_t tinteg_ = 1000;
-    uint32_t nreset_ = 3;
+    uint32_t combo_ = 1;
+    uint32_t nrows_ = 0;
+    uint32_t treset_ = 0;
+    uint32_t tinteg_ = 0;
+    uint32_t nreset_ = 0;
     uint32_t sync_dly_ = 0;
     uint32_t tgate_settle_ = 0;
     uint32_t line_idx_ = 0;

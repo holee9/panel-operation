@@ -32,14 +32,45 @@ constexpr uint8_t kRegTIntegHi = 0x17;
 constexpr uint8_t kRegVersion = 0x1F;
 
 constexpr uint16_t kVersion10 = 0x0010;
+constexpr uint8_t kComboC1 = 0x01;
+constexpr uint8_t kComboC2 = 0x02;
+constexpr uint8_t kComboC3 = 0x03;
+constexpr uint8_t kComboC4 = 0x04;
+constexpr uint8_t kComboC5 = 0x05;
+constexpr uint8_t kComboC6 = 0x06;
+constexpr uint8_t kComboC7 = 0x07;
 
-inline std::array<uint16_t, 32> MakeDefaultRegisters() {
+inline uint16_t ComboDefaultNCols(uint8_t combo) {
+    switch (combo & 0x7U) {
+        case kComboC4:
+        case kComboC5:
+            return 1664U;
+        case kComboC6:
+        case kComboC7:
+            return 3072U;
+        default:
+            return 2048U;
+    }
+}
+
+inline uint16_t ComboMinTLine(uint8_t combo) {
+    switch (combo & 0x7U) {
+        case kComboC2:
+            return 6000U;
+        case kComboC3:
+            return 5120U;
+        default:
+            return 2200U;
+    }
+}
+
+inline std::array<uint16_t, 32> MakeDefaultRegisters(uint8_t combo = kComboC1) {
     std::array<uint16_t, 32> regs{};
     regs[kRegMode] = 0x0000;
-    regs[kRegCombo] = 0x0001;
+    regs[kRegCombo] = combo & 0x7U;
     regs[kRegNRows] = 2048U;
-    regs[kRegNCols] = 2048U;
-    regs[kRegTLine] = 2200U;
+    regs[kRegNCols] = ComboDefaultNCols(combo);
+    regs[kRegTLine] = ComboMinTLine(combo);
     regs[kRegTReset] = 100U;
     regs[kRegTInteg] = 1000U;
     regs[kRegTGateOn] = 2200U;

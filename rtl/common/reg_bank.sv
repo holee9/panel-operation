@@ -42,6 +42,7 @@ module reg_bank
     output logic        ctrl_start,      // REG_CTRL[0]
     output logic        ctrl_abort,      // REG_CTRL[1]
     output logic        ctrl_irq_global_en, // REG_CTRL[2]
+    output logic        tline_clamped,   // Sticky flag: TLINE was clamped to combo minimum
     input  logic        sts_busy,        // REG_STATUS[0]
     input  logic        sts_done,        // REG_STATUS[1]
     input  logic        sts_error,       // REG_STATUS[2]
@@ -76,6 +77,7 @@ module reg_bank
   localparam logic [REG_ADDR_WIDTH-1:0] REG_VERSION_ADDR      = 5'h1F;
 
   logic [REG_DATA_WIDTH-1:0] regs [0:(1 << REG_ADDR_WIDTH)-1];
+  logic tline_clamped_r;
   integer reg_idx;
 
   function automatic logic is_read_only(input logic [REG_ADDR_WIDTH-1:0] addr);
@@ -107,6 +109,28 @@ module reg_bank
     end
   endfunction
 
+  function automatic logic [11:0] combo_default_ncols(input logic [2:0] combo_id);
+    begin
+      case (combo_id)
+        COMBO_C4,
+        COMBO_C5: combo_default_ncols = 12'd1664;
+        COMBO_C6,
+        COMBO_C7: combo_default_ncols = 12'd3072;
+        default: combo_default_ncols = 12'd2048;
+      endcase
+    end
+  endfunction
+
+  function automatic logic [15:0] combo_min_tline(input logic [2:0] combo_id);
+    begin
+      case (combo_id)
+        COMBO_C2: combo_min_tline = 16'd6000;
+        COMBO_C3: combo_min_tline = 16'd5120;
+        default: combo_min_tline = 16'd2200;
+      endcase
+    end
+  endfunction
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       for (reg_idx = 0; reg_idx < (1 << REG_ADDR_WIDTH); reg_idx = reg_idx + 1) begin
@@ -131,11 +155,38 @@ module reg_bank
       regs[REG_NRESET_ADDR]       <= 16'h0003;
       regs[REG_TINTEG_H_ADDR]     <= 16'h0000;
       regs[REG_VERSION_ADDR]      <= 16'h0010;
+      tline_clamped_r             <= 1'b0;
     end else begin
       regs[REG_CTRL_ADDR][1:0] <= 2'b00;
 
       if (reg_wr_en && !is_read_only(reg_addr)) begin
-        regs[reg_addr] <= reg_wdata;
+        unique case (reg_addr)
+          REG_COMBO_ADDR: begin
+            regs[REG_COMBO_ADDR] <= {13'h0000, reg_wdata[2:0]};
+            regs[REG_NCOLS_ADDR] <= {4'h0, combo_default_ncols(reg_wdata[2:0])};
+            if (regs[REG_TLINE_ADDR] < combo_min_tline(reg_wdata[2:0])) begin
+              regs[REG_TLINE_ADDR] <= combo_min_tline(reg_wdata[2:0]);
+              tline_clamped_r <= 1'b1;
+            end
+          end
+          REG_NCOLS_ADDR: begin
+            regs[REG_NCOLS_ADDR] <= {4'h0,
+              (reg_wdata[11:0] > combo_default_ncols(regs[REG_COMBO_ADDR][2:0])) ?
+              combo_default_ncols(regs[REG_COMBO_ADDR][2:0]) : reg_wdata[11:0]};
+          end
+          REG_TLINE_ADDR: begin
+            if (reg_wdata < combo_min_tline(regs[REG_COMBO_ADDR][2:0])) begin
+              regs[REG_TLINE_ADDR] <= combo_min_tline(regs[REG_COMBO_ADDR][2:0]);
+              tline_clamped_r <= 1'b1;
+            end else begin
+              regs[REG_TLINE_ADDR] <= reg_wdata;
+            end
+          end
+          REG_TINTEG_H_ADDR: begin
+            regs[REG_TINTEG_H_ADDR] <= {8'h00, reg_wdata[7:0]};
+          end
+          default: regs[reg_addr] <= reg_wdata;
+        endcase
       end
     end
   end
@@ -167,6 +218,7 @@ module reg_bank
     ctrl_start        = regs[REG_CTRL_ADDR][0];
     ctrl_abort        = regs[REG_CTRL_ADDR][1];
     ctrl_irq_global_en = regs[REG_CTRL_ADDR][2];
+    tline_clamped      = tline_clamped_r;
   end
 
 endmodule

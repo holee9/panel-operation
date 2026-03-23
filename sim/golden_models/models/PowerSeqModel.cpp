@@ -1,5 +1,7 @@
 #include "golden_models/models/PowerSeqModel.h"
 
+#include "golden_models/core/TestVectorIO.h"
+
 namespace fpd::sim {
 
 void PowerSeqModel::reset() {
@@ -53,7 +55,18 @@ std::vector<Mismatch> PowerSeqModel::compare(const SignalMap& rtl_outputs) const
 }
 
 void PowerSeqModel::generate_vectors(const std::string& output_dir) {
-    (void)output_dir;
+    TestVectorFile vectors;
+    vectors.module_name = "power_sequencer";
+    vectors.spec_name = "SPEC-FPD-008";
+    vectors.clock_name = "sys_clk";
+    vectors.signal_inputs = {"target_mode", "vgl_stable", "vgh_stable"};
+    vectors.signal_outputs = {"current_mode", "en_vgl", "en_vgh", "power_good", "seq_error"};
+    reset();
+    set_inputs({{"target_mode", 1U}, {"vgl_stable", 1U}, {"vgh_stable", 1U}});
+    step();
+    vectors.vectors.push_back({cycle(), {{"target_mode", 1U}, {"vgl_stable", 1U}, {"vgh_stable", 1U}}, get_outputs()});
+    WriteHexVectors(vectors, output_dir + "/power_seq_vectors.hex");
+    WriteBinaryVectors(vectors, output_dir + "/power_seq_vectors.bin");
 }
 
 }  // namespace fpd::sim

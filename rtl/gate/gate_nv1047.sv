@@ -34,6 +34,8 @@ module gate_nv1047
 );
 
   logic gate_on_prev;
+  logic [7:0] bbm_count;
+  logic       bbm_pending;
   logic [15:0] clk_div_count;
   logic [11:0] shift_count;
   logic [11:0] shift_reg;
@@ -43,6 +45,12 @@ module gate_nv1047
   function automatic logic [15:0] safe_clk_period(input logic [15:0] value);
     begin
       safe_clk_period = (value < 16'd500) ? 16'd500 : value;
+    end
+  endfunction
+
+  function automatic logic [7:0] safe_bbm_gap(input logic [7:0] value);
+    begin
+      safe_bbm_gap = (value == 8'd0) ? 8'd1 : value;
     end
   endfunction
 
@@ -58,12 +66,26 @@ module gate_nv1047
       nv_md <= 2'b00;
       row_done <= 1'b0;
       gate_on_prev <= 1'b0;
+      bbm_count <= '0;
+      bbm_pending <= 1'b0;
       clk_div_count <= '0;
       shift_count <= '0;
       shift_reg <= '0;
       shift_active <= 1'b0;
       shift_clk <= 1'b0;
     end else begin
+      row_done <= 1'b0;
+      if (gate_on_prev && !gate_on_pulse) begin
+        bbm_count <= safe_bbm_gap(cfg_gate_settle);
+        bbm_pending <= 1'b1;
+      end else if (bbm_count != 8'd0) begin
+        bbm_count <= bbm_count - 8'd1;
+        if (bbm_pending && bbm_count == 8'd1) begin
+          row_done <= 1'b1;
+          bbm_pending <= 1'b0;
+        end
+      end
+
       if (gate_on_pulse && !gate_on_prev) begin
         shift_reg <= row_index;
         shift_count <= 12'd0;
@@ -89,12 +111,14 @@ module gate_nv1047
       end
 
       nv_clk <= shift_active ? shift_clk : 1'b0;
-      nv_oe <= ~gate_on_pulse;
+      nv_oe <= ~(gate_on_pulse && (bbm_count == 8'd0));
       nv_ona <= ~reset_all;
       nv_lr <= scan_dir;
       nv_rst <= rst_n;
       nv_md <= cfg_mode;
-      row_done <= gate_on_prev && !gate_on_pulse && !shift_active;
+      if (reset_all) begin
+        bbm_pending <= 1'b0;
+      end
       gate_on_prev <= gate_on_pulse;
     end
   end

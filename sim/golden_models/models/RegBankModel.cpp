@@ -1,5 +1,6 @@
 #include "golden_models/models/RegBankModel.h"
 
+#include <algorithm>
 #include <filesystem>
 
 #include "golden_models/core/TestVectorIO.h"
@@ -14,6 +15,7 @@ RegBankModel::RegBankModel() {
 void RegBankModel::reset() {
     regs_ = MakeDefaultRegisters();
     regs_[kRegCtrl] = 0;
+    tline_clamped_ = false;
     sts_busy_ = false;
     sts_done_ = false;
     sts_error_ = false;
@@ -88,6 +90,7 @@ SignalMap RegBankModel::get_outputs() const {
         {"ctrl_abort", (regs_[kRegCtrl] >> 1) & 0x1U},
         {"ctrl_irq_global_en", (regs_[kRegCtrl] >> 2) & 0x1U},
         {"status_word", status},
+        {"tline_clamped", tline_clamped_ ? 1U : 0U},
     };
 }
 
@@ -154,8 +157,39 @@ uint16_t RegBankModel::Read(uint8_t addr) const {
 
 void RegBankModel::Write(uint8_t addr, uint16_t value) {
     addr &= 0x1FU;
-    if (!IsReadOnlyRegister(addr)) {
-        regs_[addr] = value;
+    if (IsReadOnlyRegister(addr)) {
+        return;
+    }
+
+    const auto combo =
+        static_cast<uint8_t>((addr == kRegCombo ? value : regs_[kRegCombo]) & 0x7U);
+
+    switch (addr) {
+        case kRegCombo:
+            regs_[kRegCombo] = static_cast<uint16_t>(combo);
+            regs_[kRegNCols] = ComboDefaultNCols(combo);
+            if (regs_[kRegTLine] < ComboMinTLine(combo)) {
+                regs_[kRegTLine] = ComboMinTLine(combo);
+                tline_clamped_ = true;
+            }
+            break;
+        case kRegNCols:
+            regs_[kRegNCols] = std::min<uint16_t>(value & 0x0FFFU, ComboDefaultNCols(combo));
+            break;
+        case kRegTLine:
+            if (value < ComboMinTLine(combo)) {
+                regs_[kRegTLine] = ComboMinTLine(combo);
+                tline_clamped_ = true;
+            } else {
+                regs_[kRegTLine] = value;
+            }
+            break;
+        case kRegTIntegHi:
+            regs_[kRegTIntegHi] = static_cast<uint16_t>(value & 0x00FFU);
+            break;
+        default:
+            regs_[addr] = value;
+            break;
     }
 }
 

@@ -26,6 +26,31 @@ module csi2_packet_builder
   logic [2:0] header_idx;
   logic [15:0] word_count_next;
 
+  function automatic logic [7:0] csi2_ecc(input logic [23:0] header24);
+    logic p0, p1, p2, p3, p4, p5;
+    begin
+      p0 = header24[0] ^ header24[1] ^ header24[2] ^ header24[4] ^ header24[5] ^
+           header24[7] ^ header24[10] ^ header24[11] ^ header24[13] ^ header24[16] ^
+           header24[20] ^ header24[21] ^ header24[22] ^ header24[23];
+      p1 = header24[0] ^ header24[1] ^ header24[3] ^ header24[4] ^ header24[6] ^
+           header24[8] ^ header24[10] ^ header24[12] ^ header24[14] ^ header24[17] ^
+           header24[20] ^ header24[21] ^ header24[22] ^ header24[23];
+      p2 = header24[0] ^ header24[2] ^ header24[3] ^ header24[5] ^ header24[6] ^
+           header24[9] ^ header24[11] ^ header24[12] ^ header24[15] ^ header24[18] ^
+           header24[20] ^ header24[21] ^ header24[22];
+      p3 = header24[1] ^ header24[2] ^ header24[3] ^ header24[7] ^ header24[8] ^
+           header24[9] ^ header24[13] ^ header24[14] ^ header24[15] ^ header24[19] ^
+           header24[20] ^ header24[21] ^ header24[23];
+      p4 = header24[4] ^ header24[5] ^ header24[6] ^ header24[7] ^ header24[8] ^
+           header24[9] ^ header24[16] ^ header24[17] ^ header24[18] ^ header24[19] ^
+           header24[20] ^ header24[22] ^ header24[23];
+      p5 = header24[10] ^ header24[11] ^ header24[12] ^ header24[13] ^ header24[14] ^
+           header24[15] ^ header24[16] ^ header24[17] ^ header24[18] ^ header24[19] ^
+           header24[21] ^ header24[22] ^ header24[23];
+      csi2_ecc = {2'b00, p5, p4, p3, p2, p1, p0};
+    end
+  endfunction
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       packet_byte <= 8'h00;
@@ -54,7 +79,7 @@ module csi2_packet_builder
             3'd0: packet_byte <= 8'h2E;
             3'd1: packet_byte <= word_count_next[7:0];
             3'd2: packet_byte <= word_count_next[15:8];
-            default: packet_byte <= 8'h00;
+            default: packet_byte <= csi2_ecc({word_count_next[15:8], word_count_next[7:0], 8'h2E});
           endcase
 
           if (header_idx == 3'd3) begin

@@ -22,6 +22,8 @@ public:
 
     uint16_t Read(uint8_t addr) const;
     void Write(uint8_t addr, uint16_t value);
+    bool tline_clamped() const { return tline_clamped_; }
+    void clear_tline_clamped() { tline_clamped_ = false; }
     void SetStatus(
         bool busy,
         bool done,
@@ -38,6 +40,8 @@ private:
     bool sts_line_rdy_ = false;
     uint16_t sts_line_idx_ = 0;
     uint8_t sts_err_code_ = 0;
+
+    bool tline_clamped_ = false;
 
     uint32_t in_reg_addr_ = 0;
     uint32_t in_reg_wdata_ = 0;

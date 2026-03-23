@@ -1,14 +1,50 @@
 #include "golden_models/models/PanelFsmModel.h"
 
+#include "golden_models/core/TestVectorIO.h"
+
 namespace fpd::sim {
+
+namespace {
+
+uint32_t ComboDefaultRows(uint32_t combo) {
+    switch (combo) {
+        case 6U:
+        case 7U:
+            return 3072U;
+        default:
+            return 2048U;
+    }
+}
+
+uint32_t ComboDefaultReset(uint32_t combo) {
+    return (combo >= 6U) ? 4U : 2U;
+}
+
+uint32_t ComboDefaultIntegrate(uint32_t combo) {
+    switch (combo) {
+        case 2U:
+            return 6000U;
+        case 3U:
+            return 5120U;
+        default:
+            return 2200U;
+    }
+}
+
+uint32_t EffectiveOrDefault(uint32_t value, uint32_t fallback) {
+    return value == 0U ? fallback : value;
+}
+
+}  // namespace
 
 void PanelFsmModel::reset() {
     state_ = 0;
     mode_ = 0;
-    nrows_ = 2048;
-    treset_ = 100;
-    tinteg_ = 1000;
-    nreset_ = 3;
+    combo_ = 1;
+    nrows_ = 0;
+    treset_ = 0;
+    tinteg_ = 0;
+    nreset_ = 0;
     sync_dly_ = 0;
     tgate_settle_ = 0;
     line_idx_ = 0;
@@ -33,6 +69,13 @@ void PanelFsmModel::reset() {
 }
 
 void PanelFsmModel::step() {
+    const uint32_t eff_nrows = EffectiveOrDefault(nrows_, ComboDefaultRows(combo_));
+    const uint32_t eff_treset = EffectiveOrDefault(treset_, ComboDefaultReset(combo_));
+    const uint32_t eff_tinteg = EffectiveOrDefault(tinteg_, ComboDefaultIntegrate(combo_));
+    const uint32_t eff_nreset = EffectiveOrDefault(nreset_, 1U);
+    const uint32_t eff_sync_dly = EffectiveOrDefault(sync_dly_, 1U);
+    const uint32_t eff_tgate_settle = EffectiveOrDefault(tgate_settle_, 1U);
+    const uint32_t eff_ready_timeout = radiography_mode_ != 0U ? 30U : 5U;
     done_ = 0;
     if (prot_error_ || prot_force_stop_) {
       state_ = 15;
@@ -64,13 +107,13 @@ void PanelFsmModel::step() {
           state_ = 2;
           break;
         case 2:
-          if (++timer_ >= (treset_ + nreset_)) {
+          if (++timer_ >= (eff_treset + eff_nreset)) {
             timer_ = 0;
             state_ = (mode_ == 4U) ? 10U : ((mode_ == 2U || radiography_mode_ != 0U) ? 3U : 4U);
           }
           break;
         case 3:
-          if (++wait_timer_ >= (radiography_mode_ != 0U ? 30U : 5U)) {
+          if (++wait_timer_ >= eff_ready_timeout) {
             state_ = 15;
             error_ = 1;
             err_code_ = 2;
@@ -81,25 +124,25 @@ void PanelFsmModel::step() {
           }
           break;
         case 4:
-          if (++timer_ >= tinteg_) {
+          if (++timer_ >= eff_tinteg) {
             timer_ = 0;
             state_ = 6;
           }
           break;
         case 5:
-          if (++wait_timer_ >= (radiography_mode_ != 0U ? 30U : 5U)) {
+          if (++wait_timer_ >= eff_ready_timeout) {
             state_ = 15;
             error_ = 1;
             err_code_ = 2;
           } else if (xray_on_ != 0U || xray_prep_req_ != 0U) {
-            if (++timer_ >= tinteg_ || xray_off_ != 0U) {
+            if (++timer_ >= eff_tinteg || xray_off_ != 0U) {
               timer_ = 0;
               state_ = 6;
             }
           }
           break;
         case 6:
-          if (afe_config_done_ != 0U || ++timer_ >= sync_dly_) {
+          if (afe_config_done_ != 0U || ++timer_ >= eff_sync_dly) {
             timer_ = 0;
             line_idx_ = 0;
             state_ = 7;
@@ -108,7 +151,7 @@ void PanelFsmModel::step() {
         case 7:
           if (((mode_ != 3U) && gate_row_done_ != 0U && afe_line_valid_ != 0U) ||
               ((mode_ == 3U) && afe_line_valid_ != 0U)) {
-            if (line_idx_ + 1U >= nrows_) {
+            if (line_idx_ + 1U >= eff_nrows) {
               timer_ = 0;
               state_ = 8;
             } else {
@@ -117,7 +160,7 @@ void PanelFsmModel::step() {
           }
           break;
         case 8:
-          if (++timer_ >= tgate_settle_) {
+          if (++timer_ >= eff_tgate_settle) {
             timer_ = 0;
             state_ = 9;
           }
@@ -144,6 +187,7 @@ void PanelFsmModel::set_inputs(const SignalMap& inputs) {
     ctrl_start_ = GetScalar(inputs, "ctrl_start", ctrl_start_);
     ctrl_abort_ = GetScalar(inputs, "ctrl_abort", ctrl_abort_);
     mode_ = GetScalar(inputs, "cfg_mode", mode_);
+    combo_ = GetScalar(inputs, "cfg_combo", combo_);
     nrows_ = GetScalar(inputs, "cfg_nrows", nrows_);
     treset_ = GetScalar(inputs, "cfg_treset", treset_);
     tinteg_ = GetScalar(inputs, "cfg_tinteg", tinteg_);
@@ -177,7 +221,34 @@ std::vector<Mismatch> PanelFsmModel::compare(const SignalMap& rtl_outputs) const
 }
 
 void PanelFsmModel::generate_vectors(const std::string& output_dir) {
-    (void)output_dir;
+    TestVectorFile vectors;
+    vectors.module_name = "panel_ctrl_fsm";
+    vectors.spec_name = "SPEC-FPD-002";
+    vectors.clock_name = "sys_clk";
+    vectors.signal_inputs = {
+        "ctrl_start", "cfg_mode", "cfg_combo", "cfg_nrows", "cfg_treset", "cfg_tinteg",
+        "cfg_nreset", "cfg_sync_dly", "cfg_tgate_settle", "xray_prep_req",
+        "xray_on", "xray_off", "gate_row_done", "afe_config_done", "afe_line_valid"
+    };
+    vectors.signal_outputs = {"fsm_state", "sts_busy", "sts_done", "sts_error", "sts_line_idx", "sts_err_code"};
+
+    reset();
+    set_inputs({
+        {"ctrl_start", 1U}, {"cfg_mode", 0U}, {"cfg_combo", 1U}, {"cfg_nrows", 2U},
+        {"cfg_treset", 1U}, {"cfg_tinteg", 1U}
+    });
+    for (int i = 0; i < 6; ++i) {
+        if (i == 3) {
+            set_inputs({
+                {"cfg_combo", 1U}, {"afe_config_done", 1U}, {"afe_line_valid", 1U},
+                {"gate_row_done", 1U}, {"cfg_nrows", 2U}
+            });
+        }
+        step();
+        vectors.vectors.push_back({cycle(), {}, get_outputs()});
+    }
+    WriteHexVectors(vectors, output_dir + "/panel_fsm_vectors.hex");
+    WriteBinaryVectors(vectors, output_dir + "/panel_fsm_vectors.bin");
 }
 
 }  // namespace fpd::sim

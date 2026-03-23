@@ -1,5 +1,7 @@
 #include "golden_models/models/Csi2LaneDistModel.h"
 
+#include "golden_models/core/TestVectorIO.h"
+
 namespace fpd::sim {
 
 void Csi2LaneDistModel::reset() {
@@ -52,7 +54,18 @@ std::vector<Mismatch> Csi2LaneDistModel::compare(const SignalMap& rtl_outputs) c
 }
 
 void Csi2LaneDistModel::generate_vectors(const std::string& output_dir) {
-    (void)output_dir;
+    TestVectorFile vectors;
+    vectors.module_name = "csi2_lane_dist";
+    vectors.spec_name = "SPEC-FPD-007";
+    vectors.clock_name = "sys_clk";
+    vectors.signal_inputs = {"packet_bytes", "lane_count"};
+    vectors.signal_outputs = {"lane0_size", "lane1_size", "lane2_size", "lane3_size"};
+    reset();
+    set_inputs({{"packet_bytes", std::vector<uint16_t>{0U, 1U, 2U, 3U, 4U, 5U}}, {"lane_count", 4U}});
+    step();
+    vectors.vectors.push_back({cycle(), {{"packet_bytes", std::vector<uint16_t>{0U, 1U, 2U, 3U, 4U, 5U}}, {"lane_count", 4U}}, get_outputs()});
+    WriteHexVectors(vectors, output_dir + "/csi2_lane_vectors.hex");
+    WriteBinaryVectors(vectors, output_dir + "/csi2_lane_vectors.bin");
 }
 
 }  // namespace fpd::sim

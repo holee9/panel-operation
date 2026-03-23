@@ -569,6 +569,7 @@ module detector_core
       .fsm_state(fsm_state_sig),
       .xray_active(xray_on),
       .cfg_max_exposure(cfg_tinteg),
+      .radiography_mode(eff_combo == COMBO_C6 || eff_combo == COMBO_C7),
       .err_timeout(err_timeout),
       .err_flag(prot_error),
       .force_gate_off(prot_force_stop)

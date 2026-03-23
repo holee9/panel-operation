@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <queue>
 #include <vector>
 
 #include "golden_models/core/GoldenModelBase.h"
@@ -17,8 +18,12 @@ public:
     void generate_vectors(const std::string& output_dir) override;
 
 private:
-    static constexpr std::size_t kCols = 2048;
-    std::array<std::vector<uint16_t>, 2> banks_{{std::vector<uint16_t>(kCols), std::vector<uint16_t>(kCols)}};
+    static constexpr std::size_t kMaxCols = 3072;
+    static constexpr std::size_t kFifoDepth = 16;
+    std::array<std::vector<uint16_t>, 2> banks_{{std::vector<uint16_t>(kMaxCols), std::vector<uint16_t>(kMaxCols)}};
+    std::queue<uint16_t> cdc_fifo_;
+    uint32_t cfg_ncols_ = 2048;
+    uint32_t cfg_afe_count_ = 1;
     uint32_t wr_addr_ = 0;
     uint32_t wr_data_ = 0;
     uint32_t wr_en_ = 0;
@@ -29,6 +34,11 @@ private:
     uint32_t rd_data_ = 0;
     uint32_t wr_line_done_ = 0;
     uint32_t bank_swap_ = 0;
+    uint32_t fifo_level_ = 0;
+    uint32_t fifo_overflow_ = 0;
+    uint32_t line_fill_level_ = 0;
+    uint32_t active_streams_ = 1;
+    std::vector<uint16_t> wr_samples_;
 };
 
 }  // namespace fpd::sim

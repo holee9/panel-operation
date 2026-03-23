@@ -47,6 +47,7 @@ module gate_nt39565d
   logic        left_bank_active;
   logic        right_bank_active;
   logic        stv_phase_sel;
+  logic [2:0]  chip_phase;
 
   function automatic logic [15:0] safe_period(input logic [15:0] value);
     begin
@@ -55,9 +56,12 @@ module gate_nt39565d
   endfunction
 
   always_comb begin
+    // X239AW1-102 panel: 3248 total gate lines / 6 NT39565D chips = 541.3 lines/chip.
+    // Integer division maps row_index to chip index 0..5 for cascade control.
+    chip_phase = row_index / 12'd541;
     stv_phase_sel = scan_dir ? ~row_index[0] : row_index[0];
-    left_bank_active = (chip_sel == 2'b00) || (chip_sel == 2'b10) || (scan_dir == 1'b0);
-    right_bank_active = (chip_sel == 2'b01) || (chip_sel == 2'b10) || (scan_dir == 1'b1);
+    left_bank_active = (chip_sel != 2'b01);
+    right_bank_active = (chip_sel != 2'b00);
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -118,7 +122,7 @@ module gate_nt39565d
       nt_oe2_l <= gate_on_pulse && left_bank_active && row_index[0];
       nt_oe2_r <= gate_on_pulse && right_bank_active && row_index[0];
       cascade_complete <= gate_on_pulse && cascade_stv_return &&
-                          ((chip_sel == 2'b10) || (mode_sel != 2'b00));
+                          ((chip_phase >= 3'd5) || (chip_sel == 2'b10) || (mode_sel != 2'b00));
       row_done <= gate_on_prev && !gate_on_pulse;
       gate_on_prev <= gate_on_pulse;
     end

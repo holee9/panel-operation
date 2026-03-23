@@ -17,11 +17,15 @@ struct TestVector {
 struct TestVectorFile {
     std::string module_name;
     std::string spec_name;
+    std::string clock_name;
     std::vector<std::string> signal_inputs;
     std::vector<std::string> signal_outputs;
     std::vector<TestVector> vectors;
 };
 
 void WriteHexVectors(const TestVectorFile& vector_file, const std::string& path);
+void WriteBinaryVectors(const TestVectorFile& vector_file, const std::string& path);
+TestVectorFile ReadHexVectors(const std::string& path);
+TestVectorFile ReadBinaryVectors(const std::string& path);
 
 }  // namespace fpd::sim
