@@ -7,7 +7,7 @@
 
 int main() {
     const std::filesystem::path out_dir =
-        std::filesystem::current_path() / "golden_models" / "test_vectors" / "spec001";
+        std::filesystem::current_path() / "sim" / "testvectors" / "spec001";
     std::filesystem::create_directories(out_dir);
 
     fpd::sim::RegBankModel reg_bank_model;

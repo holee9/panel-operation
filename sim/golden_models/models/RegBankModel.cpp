@@ -135,7 +135,7 @@ void RegBankModel::generate_vectors(const std::string& output_dir) {
         get_outputs(),
     });
 
-    WriteHexVectors(vector_file, output_dir + "/reg_bank.hex");
+    WriteHexVectors(vector_file, output_dir + "/reg_bank_defaults.hex");
 }
 
 uint16_t RegBankModel::Read(uint8_t addr) const {
