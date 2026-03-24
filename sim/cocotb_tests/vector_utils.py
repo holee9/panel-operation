@@ -71,7 +71,16 @@ def load_hex_vectors(path: str | Path) -> VectorFile:
 
 
 def resolve_vector_path(filename: str) -> Path:
-    return VECTOR_ROOT / filename
+    direct_path = VECTOR_ROOT / filename
+    if direct_path.exists():
+        return direct_path
+
+    for candidate in sorted(VECTOR_ROOT.glob("spec*/")):
+        nested_path = candidate / filename
+        if nested_path.exists():
+            return nested_path
+
+    return direct_path
 
 
 def _resolve_signal_name(signal_name: str, aliases: dict[str, str] | None):
