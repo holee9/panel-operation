@@ -1,0 +1,98 @@
+<UserControl x:Class="FpdSimViewer.Views.Tabs.PanelScanTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <Grid Margin="6">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3*" />
+            <ColumnDefinition Width="2*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource PanelBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Panel Scan" Style="{StaticResource SectionTitleStyle}" />
+                    <TextBlock Text="{Binding GateIcName}" Margin="18,2,0,0" />
+                    <TextBlock Text=" / " Margin="4,2,4,0" />
+                    <TextBlock Text="{Binding AfeName}" Margin="0,2,0,0" />
+                </StackPanel>
+                <Viewbox Grid.Row="1" Stretch="Uniform">
+                    <Border Background="#FFF5F7FA" Padding="12" CornerRadius="10">
+                        <Image Source="{Binding PanelBitmap}" Stretch="Uniform" />
+                    </Border>
+                </Viewbox>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource PanelBorderStyle}">
+                <UniformGrid Rows="1" Columns="4">
+                    <StackPanel>
+                        <TextBlock Text="Current Row" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding CurrentRow}" FontSize="22" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Total Rows" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding TotalRows}" FontSize="22" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="AFE Ready" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding AfeReady}" FontSize="22" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Data Valid" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding AfeDoutValid}" FontSize="22" FontWeight="SemiBold" />
+                    </StackPanel>
+                </UniformGrid>
+            </Border>
+
+            <Border Grid.Row="1" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Gate Signals" Style="{StaticResource SectionTitleStyle}" />
+                    <ListView Grid.Row="1" ItemsSource="{Binding GateSignals}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Signal" DisplayMemberBinding="{Binding Name}" Width="150" />
+                                <GridViewColumn Header="Value" DisplayMemberBinding="{Binding Value}" Width="120" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="AFE Status" Style="{StaticResource SectionTitleStyle}" />
+                    <ListView Grid.Row="1" ItemsSource="{Binding AfeStatusItems}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Chip" DisplayMemberBinding="{Binding Name}" Width="150" />
+                                <GridViewColumn Header="State" DisplayMemberBinding="{Binding Value}" Width="120" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

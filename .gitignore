@@ -73,6 +73,7 @@ htmlcov/
 *.sw?
 *~
 .cursor/
+*.user
 *.sublime-project
 *.sublime-workspace
 *.njsproj
@@ -211,3 +212,4 @@ dist-ssr/
 # Large Binary Archives
 # ===========================================
 *.zip
+.dotnet-home/

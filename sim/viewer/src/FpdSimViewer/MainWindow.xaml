@@ -1,0 +1,44 @@
+<Window x:Class="FpdSimViewer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:FpdSimViewer.Views.Controls"
+        xmlns:tabs="clr-namespace:FpdSimViewer.Views.Tabs"
+        mc:Ignorable="d"
+        Title="FPD Simulation Viewer"
+        Width="1480"
+        Height="920"
+        MinWidth="1280"
+        MinHeight="780">
+    <Window.InputBindings>
+        <KeyBinding Key="Space" Command="{Binding SimControl.TogglePlayCommand}" />
+        <KeyBinding Key="Right" Command="{Binding SimControl.StepCommand}" />
+        <KeyBinding Key="Home" Command="{Binding SimControl.ResetCommand}" />
+    </Window.InputBindings>
+
+    <DockPanel LastChildFill="True">
+        <controls:SimControlBar DockPanel.Dock="Top"
+                                DataContext="{Binding SimControl}" />
+
+        <controls:StatusBarControl DockPanel.Dock="Bottom"
+                                   Margin="6,0,6,6"
+                                   DataContext="{Binding}" />
+
+        <controls:RegisterEditorPanel DockPanel.Dock="Right"
+                                      Width="450"
+                                      DataContext="{Binding RegisterEditor}" />
+
+        <TabControl>
+            <TabItem Header="Panel Scan">
+                <tabs:PanelScanTab DataContext="{Binding PanelScan}" />
+            </TabItem>
+            <TabItem Header="FSM Diagram">
+                <tabs:FsmDiagramTab DataContext="{Binding FsmDiagram}" />
+            </TabItem>
+            <TabItem Header="Imaging Cycle">
+                <tabs:ImagingCycleTab DataContext="{Binding ImagingCycle}" />
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

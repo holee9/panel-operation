@@ -1,0 +1,44 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="Color.Surface">#FFF4F6F0</Color>
+    <Color x:Key="Color.Panel">#FFFDFBF4</Color>
+    <Color x:Key="Color.PanelAlt">#FFF0EBDD</Color>
+    <Color x:Key="Color.Border">#FFBFAF8D</Color>
+    <Color x:Key="Color.Accent">#FF0B6E4F</Color>
+    <Color x:Key="Color.AccentStrong">#FF084C61</Color>
+    <Color x:Key="Color.Warning">#FFF4A259</Color>
+    <Color x:Key="Color.Danger">#FFC1121F</Color>
+    <Color x:Key="Color.Info">#FF3C91E6</Color>
+    <Color x:Key="Color.TextPrimary">#FF1F2933</Color>
+    <Color x:Key="Color.TextMuted">#FF52606D</Color>
+    <Color x:Key="Color.RowPending">#FFE8E4D8</Color>
+    <Color x:Key="Color.RowActive">#FF3C91E6</Color>
+    <Color x:Key="Color.RowSettle">#FFF4A259</Color>
+    <Color x:Key="Color.RowDone">#FF0B6E4F</Color>
+    <Color x:Key="Color.StateIdle">#FFD9E2EC</Color>
+    <Color x:Key="Color.StateRun">#FF3C91E6</Color>
+    <Color x:Key="Color.StateReadout">#FF0B6E4F</Color>
+    <Color x:Key="Color.StateDone">#FF8FBC8B</Color>
+    <Color x:Key="Color.StateError">#FFC1121F</Color>
+
+    <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
+    <SolidColorBrush x:Key="Brush.Panel" Color="{StaticResource Color.Panel}" />
+    <SolidColorBrush x:Key="Brush.PanelAlt" Color="{StaticResource Color.PanelAlt}" />
+    <SolidColorBrush x:Key="Brush.Border" Color="{StaticResource Color.Border}" />
+    <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
+    <SolidColorBrush x:Key="Brush.AccentStrong" Color="{StaticResource Color.AccentStrong}" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}" />
+    <SolidColorBrush x:Key="Brush.Info" Color="{StaticResource Color.Info}" />
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}" />
+    <SolidColorBrush x:Key="Brush.RowPending" Color="{StaticResource Color.RowPending}" />
+    <SolidColorBrush x:Key="Brush.RowActive" Color="{StaticResource Color.RowActive}" />
+    <SolidColorBrush x:Key="Brush.RowSettle" Color="{StaticResource Color.RowSettle}" />
+    <SolidColorBrush x:Key="Brush.RowDone" Color="{StaticResource Color.RowDone}" />
+    <SolidColorBrush x:Key="Brush.StateIdle" Color="{StaticResource Color.StateIdle}" />
+    <SolidColorBrush x:Key="Brush.StateRun" Color="{StaticResource Color.StateRun}" />
+    <SolidColorBrush x:Key="Brush.StateReadout" Color="{StaticResource Color.StateReadout}" />
+    <SolidColorBrush x:Key="Brush.StateDone" Color="{StaticResource Color.StateDone}" />
+    <SolidColorBrush x:Key="Brush.StateError" Color="{StaticResource Color.StateError}" />
+</ResourceDictionary>
