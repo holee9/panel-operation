@@ -805,6 +805,7 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | `.moai/project/` | 프로젝트 문서 (product.md, structure.md, tech.md, implementation-plan.md) |
 | `.moai/specs/` | SPEC 문서 (EARS 요구사항, 수용기준, 구현 계획, 리서치) |
 | `sim/` | SW-First 검증 — C++ 골든 모델 30종, GoogleTest 13개(579 LOC), cocotb 16개(478 LOC), 벡터 생성기 6개 (~100파일) |
+| `sim/viewer/` | FPD Simulation Viewer (C# WPF .NET 8) — 12 골든 모델 포팅, 3-Tab GUI, 64 xUnit 테스트 ([사용 가이드](sim/viewer/USER_GUIDE.md)) |
 | `docs/review/` | 구현 코드 리뷰 v8 (교차검증) + Copilot 리뷰 v2 + 테스트 검증 리포트 (빌드 0에러, 13/13 PASS) |
 
 ### 리서치 문서 목록
@@ -850,6 +851,8 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | 2026-03-23 | CR-002 듀얼 타임아웃(ProtMonModel 5s/30s) + CR-005 tline_clamped sticky flag 구현 |
 | 2026-03-23 | Copilot 리뷰 v2 — Verilator 비운영 확인, 벡터 경로 통일 확인, accept-all 제거 확인 |
 | 2026-03-23 | **교차검증 v8** — RTL 4파일 + 골든 모델 8항목 + 테스트 27파일 코드 대조 완료, 수치 보정 반영 |
+| 2026-03-25 | **FPD Simulation Viewer** (C# WPF) — 12 골든 모델 C# 포팅, 3-Tab GUI, 64 xUnit 테스트 |
+| 2026-03-27 | FPD Simulation Viewer 사용 가이드 작성 + NullRef 버그 수정 |
 
 ---
 

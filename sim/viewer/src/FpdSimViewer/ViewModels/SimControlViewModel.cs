@@ -136,9 +136,12 @@ public sealed partial class SimControlViewModel : ObservableObject, IDisposable
     partial void OnSelectedComboChanged(ComboChoice value)
     {
         _engine.SetCombo(value.Id);
-        _engine.SetMode((uint)SelectedMode.Mode);
-        ApplyExternalInputs();
-        _snapshotCallback(_engine.RefreshSnapshot());
+        if (SelectedMode is not null)
+        {
+            _engine.SetMode((uint)SelectedMode.Mode);
+            ApplyExternalInputs();
+            _snapshotCallback(_engine.RefreshSnapshot());
+        }
     }
 
     partial void OnSelectedModeChanged(ModeChoice value)

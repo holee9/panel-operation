@@ -47,6 +47,8 @@ Or open `FpdSimViewer.sln` in Visual Studio and press F5.
 5. Observe the three tabs updating in real-time
 6. Click **Step** (or press Right arrow) for single-cycle stepping
 
+> **Detailed User Guide**: See [USER_GUIDE.md](USER_GUIDE.md) for comprehensive usage instructions including external signal injection, register editing, troubleshooting, and step-by-step scenarios.
+
 ## Hardware Combinations
 
 | Combo | Panel | Gate IC | AFE | Rows | Cols | AFE Chips |
