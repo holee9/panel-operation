@@ -805,7 +805,7 @@ MCU ──SPI──▶ FPGA ──SD/CLK/OE──▶ Gate IC ──VGG/VEE──
 | `.moai/project/` | 프로젝트 문서 (product.md, structure.md, tech.md, implementation-plan.md) |
 | `.moai/specs/` | SPEC 문서 (EARS 요구사항, 수용기준, 구현 계획, 리서치) |
 | `sim/` | SW-First 검증 — C++ 골든 모델 30종, GoogleTest 13개(579 LOC), cocotb 16개(478 LOC), 벡터 생성기 6개 (~100파일) |
-| `sim/viewer/` | FPD Simulation Viewer (C# WPF .NET 8) — 12 골든 모델 포팅, 3-Tab GUI, 64 xUnit 테스트 ([사용 가이드](sim/viewer/USER_GUIDE.md)) |
+| `sim/viewer/` | FPD Simulation Viewer (C# WPF .NET 8) — 12 골든 모델 포팅, unified Operation Monitor + Setup/Data Path/Verification tabs, 77 xUnit 테스트 ([사용 가이드](sim/viewer/USER_GUIDE.md)) |
 | `docs/review/` | 구현 코드 리뷰 v8 (교차검증) + Copilot 리뷰 v2 + 테스트 검증 리포트 (빌드 0에러, 13/13 PASS) |
 
 ### 리서치 문서 목록

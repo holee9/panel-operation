@@ -12,9 +12,9 @@ module line_buf_ram
     input  logic        rst_n,
 
     // Write port (from line_data_rx instances)
-    input  logic [PIXEL_WIDTH-1:0] wr_data,
-    input  logic [11:0] wr_addr,       // Column address (AFE offset + col index)
-    input  logic        wr_en,
+    input  logic [N_AFES-1:0][PIXEL_WIDTH-1:0] wr_data,
+    input  logic [N_AFES-1:0][11:0] wr_addr,       // Column address (AFE offset + col index)
+    input  logic [N_AFES-1:0]                  wr_en,
     input  logic        wr_bank_sel,   // Ping-pong bank select
 
     // Read port (to data_out_mux)
@@ -35,13 +35,17 @@ module line_buf_ram
       wr_line_done <= 1'b0;
       bank_swap <= 1'b0;
     end else begin
+      integer afe_idx;
+
       wr_line_done <= 1'b0;
       bank_swap <= 1'b0;
-      if (wr_en) begin
-        mem[wr_bank_sel][wr_addr] <= wr_data;
-        if (wr_addr + 12'd1 >= N_COLS) begin
-          wr_line_done <= 1'b1;
-          bank_swap <= 1'b1;
+      for (afe_idx = 0; afe_idx < N_AFES; afe_idx++) begin
+        if (wr_en[afe_idx]) begin
+          mem[wr_bank_sel][wr_addr[afe_idx]] <= wr_data[afe_idx];
+          if (wr_addr[afe_idx] + 12'd1 >= N_COLS) begin
+            wr_line_done <= 1'b1;
+            bank_swap <= 1'b1;
+          end
         end
       end
     end

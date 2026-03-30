@@ -53,10 +53,10 @@ module detector_core
     output logic        afe_spi_sdi,
     input  logic        afe_spi_sdo,
     output logic        afe_spi_cs_n,
-    input  logic        afe_dout_a,
-    input  logic        afe_dout_b,
-    input  logic        afe_dclk,
-    input  logic        afe_fclk,
+    input  logic [MAX_AFE_CHIPS-1:0] afe_dout_a,
+    input  logic [MAX_AFE_CHIPS-1:0] afe_dout_b,
+    input  logic [MAX_AFE_CHIPS-1:0] afe_dclk,
+    input  logic [MAX_AFE_CHIPS-1:0] afe_fclk,
     input  logic        xray_prep_req,
     output logic        xray_enable,
     input  logic        xray_on,
@@ -108,9 +108,7 @@ module detector_core
   logic gate_on_pulse, gate_settle, scan_active, scan_done;
   logic dout_window_valid, afe_ready;
   logic fclk_expected;
-  logic [PIXEL_WIDTH-1:0] pixel_data, rd_pixel_data;
-  logic pixel_valid, line_complete;
-  logic [11:0] pixel_col_idx;
+  logic [PIXEL_WIDTH-1:0] rd_pixel_data;
   logic wr_bank_sel, rd_bank_sel, bank_swap, wr_line_done;
   logic [11:0] rd_addr;
   logic rd_en, frame_done_int;
@@ -127,8 +125,29 @@ module detector_core
   logic [3:0] eff_afe_nchip;
   logic [2:0] eff_lane_count;
 
+  function automatic int afe_count(
+    input logic [2:0] combo_id,
+    input int fallback_count
+  );
+    begin
+      case (combo_id)
+        COMBO_C6,
+        COMBO_C7: afe_count = 12;
+        default: afe_count = fallback_count;
+      endcase
+    end
+  endfunction
+
+  localparam int ACTIVE_AFE_COUNT = FORCE_DEFAULT_COMBO ?
+      afe_count(DEFAULT_COMBO, DEFAULT_AFE_CHIPS) : DEFAULT_AFE_CHIPS;
+
   localparam int LINE_RX_CHANNELS =
-      ((DEFAULT_NCOLS + DEFAULT_AFE_CHIPS - 1) / DEFAULT_AFE_CHIPS);
+      ((DEFAULT_NCOLS + ACTIVE_AFE_COUNT - 1) / ACTIVE_AFE_COUNT);
+
+  logic [ACTIVE_AFE_COUNT-1:0][PIXEL_WIDTH-1:0] rx_pixel_data;
+  logic [ACTIVE_AFE_COUNT-1:0]                  rx_pixel_valid;
+  logic [ACTIVE_AFE_COUNT-1:0][11:0]           rx_pixel_col_idx;
+  logic [ACTIVE_AFE_COUNT-1:0][11:0]           linebuf_wr_addr;
 
   function automatic logic [11:0] combo_default_ncols(input logic [2:0] combo_id);
     begin
@@ -427,23 +446,32 @@ module detector_core
     end
   endgenerate
 
-  line_data_rx #(
-      .ADI_MODE(!USE_AFE2256),
-      .N_CHANNELS(LINE_RX_CHANNELS)
-  ) u_line_rx (
-      .clk(clk_sys_out),
-      .rst_n(rst_sync_n),
-      .lvds_dclk(afe_dclk),
-      .lvds_dout_a(afe_dout_a),
-      .lvds_dout_b(afe_dout_b),
-      .lvds_fclk(afe_fclk),
-      .rx_enable(dout_window_valid),
-      .bitslip_req(1'b0),
-      .pixel_data(pixel_data),
-      .pixel_valid(pixel_valid),
-      .pixel_col_idx(pixel_col_idx),
-      .line_complete(line_complete)
-  );
+  genvar afe_idx;
+  generate
+    for (afe_idx = 0; afe_idx < ACTIVE_AFE_COUNT; afe_idx++) begin : gen_afe_rx
+      localparam logic [11:0] COL_OFFSET = afe_idx * LINE_RX_CHANNELS;
+
+      line_data_rx #(
+          .ADI_MODE(!USE_AFE2256),
+          .N_CHANNELS(LINE_RX_CHANNELS)
+      ) u_line_rx (
+          .clk(clk_sys_out),
+          .rst_n(rst_sync_n),
+          .lvds_dclk(afe_dclk[afe_idx]),
+          .lvds_dout_a(afe_dout_a[afe_idx]),
+          .lvds_dout_b(afe_dout_b[afe_idx]),
+          .lvds_fclk(afe_fclk[afe_idx]),
+          .rx_enable(dout_window_valid),
+          .bitslip_req(1'b0),
+          .pixel_data(rx_pixel_data[afe_idx]),
+          .pixel_valid(rx_pixel_valid[afe_idx]),
+          .pixel_col_idx(rx_pixel_col_idx[afe_idx]),
+          .line_complete()
+      );
+
+      assign linebuf_wr_addr[afe_idx] = rx_pixel_col_idx[afe_idx] + COL_OFFSET;
+    end
+  endgenerate
 
   always_ff @(posedge clk_sys_out or negedge rst_sync_n) begin
     if (!rst_sync_n) begin
@@ -482,14 +510,14 @@ module detector_core
 
   line_buf_ram #(
       .N_COLS(MAX_COLS),
-      .N_AFES(DEFAULT_AFE_CHIPS)
+      .N_AFES(ACTIVE_AFE_COUNT)
   ) u_line_buf (
-      .wr_clk(afe_dclk),
+      .wr_clk(afe_dclk[0]),
       .rd_clk(clk_sys_out),
       .rst_n(rst_sync_n),
-      .wr_data(pixel_data),
-      .wr_addr(pixel_col_idx),
-      .wr_en(pixel_valid),
+      .wr_data(rx_pixel_data),
+      .wr_addr(linebuf_wr_addr),
+      .wr_en(rx_pixel_valid),
       .wr_bank_sel(wr_bank_sel),
       .rd_data(rd_pixel_data),
       .rd_addr(rd_addr),

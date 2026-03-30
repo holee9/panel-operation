@@ -22,14 +22,45 @@
                     <TextBlock Text="Hardware Selection" Style="{StaticResource SectionTitleStyle}" />
 
                     <Grid Grid.Row="1" Margin="0,4,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
+
                         <TextBlock Text="Preset" VerticalAlignment="Center" Margin="0,0,8,0" />
                         <ComboBox Grid.Column="1"
                                   ItemsSource="{Binding ComboOptions}"
                                   SelectedItem="{Binding SelectedCombo}"
+                                  DisplayMemberPath="Label" />
+
+                        <TextBlock Grid.Row="1" Text="Panel" VerticalAlignment="Center" Margin="0,8,8,0" />
+                        <ComboBox Grid.Row="1"
+                                  Grid.Column="1"
+                                  Margin="0,8,0,0"
+                                  ItemsSource="{Binding PanelOptions}"
+                                  SelectedItem="{Binding SelectedPanel}"
+                                  DisplayMemberPath="Label" />
+
+                        <TextBlock Grid.Row="2" Text="Gate IC" VerticalAlignment="Center" Margin="0,8,8,0" />
+                        <ComboBox Grid.Row="2"
+                                  Grid.Column="1"
+                                  Margin="0,8,0,0"
+                                  ItemsSource="{Binding GateOptions}"
+                                  SelectedItem="{Binding SelectedGate}"
+                                  DisplayMemberPath="Label" />
+
+                        <TextBlock Grid.Row="3" Text="AFE" VerticalAlignment="Center" Margin="0,8,8,0" />
+                        <ComboBox Grid.Row="3"
+                                  Grid.Column="1"
+                                  Margin="0,8,0,0"
+                                  ItemsSource="{Binding AfeOptions}"
+                                  SelectedItem="{Binding SelectedAfe}"
                                   DisplayMemberPath="Label" />
                     </Grid>
 

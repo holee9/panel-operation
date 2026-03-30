@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "golden_models/models/Csi2LaneDistModel.h"
 #include "golden_models/models/DataOutMuxModel.h"
 #include "golden_models/models/LineBufModel.h"
 #include "golden_models/models/McuDataIfModel.h"
@@ -30,6 +31,30 @@ int main() {
         line_buf.step();
         Expect(fpd::sim::GetScalar(line_buf.get_outputs(), "rd_data") == 0xBBBBU,
                "line buffer should write subsequent samples to consecutive addresses");
+
+        fpd::sim::Csi2LaneDistModel lane_dist;
+        lane_dist.reset();
+        lane_dist.SetLaneCount(2U);
+        lane_dist.set_inputs({{"packet_bytes", std::vector<uint16_t>{0U, 1U, 2U, 3U}}, {"lane_count", 2U}});
+        lane_dist.step();
+        const auto& first_split = lane_dist.last_lanes();
+        Expect(first_split[0].size() == 2U && first_split[0][0] == 0U && first_split[0][1] == 2U,
+               "2-lane distribution should start with even bytes on lane 0");
+        Expect(first_split[1].size() == 2U && first_split[1][0] == 1U && first_split[1][1] == 3U,
+               "2-lane distribution should start with odd bytes on lane 1");
+        lane_dist.step();
+        const auto& second_split = lane_dist.last_lanes();
+        Expect(second_split[0].size() == 2U && second_split[0][0] == 1U && second_split[0][1] == 3U,
+               "2-lane distribution should alternate the starting lane on the next cycle");
+        Expect(second_split[1].size() == 2U && second_split[1][0] == 0U && second_split[1][1] == 2U,
+               "2-lane distribution should swap the byte pairing on alternating cycles");
+        lane_dist.set_inputs({{"packet_bytes", std::vector<uint16_t>{10U, 11U, 12U, 13U, 14U, 15U}}, {"lane_count", 4U}});
+        lane_dist.step();
+        const auto& four_lane_split = lane_dist.last_lanes();
+        Expect(four_lane_split[0].size() == 2U && four_lane_split[0][0] == 10U && four_lane_split[0][1] == 14U,
+               "4-lane distribution should preserve lane 0 order without interleave swapping");
+        Expect(four_lane_split[3].size() == 1U && four_lane_split[3][0] == 13U,
+               "4-lane distribution should fan out the trailing byte to lane 3");
 
         fpd::sim::DataOutMuxModel mux;
         mux.reset();

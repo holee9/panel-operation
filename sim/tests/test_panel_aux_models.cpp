@@ -2,6 +2,7 @@
 
 #include "golden_models/models/PanelFsmModel.h"
 #include "golden_models/models/PanelIntegModel.h"
+#include "golden_models/models/PowerSeqModel.h"
 #include "golden_models/models/PanelResetModel.h"
 #include "golden_models/models/ProtMonModel.h"
 #include "tests/TestHelpers.h"
@@ -122,6 +123,31 @@ int main() {
     prot_explicit.step();
     Expect(fpd::sim::GetScalar(prot_explicit.get_outputs(), "force_gate_off") == 1U,
            "explicit exposure limit should trigger at configured count regardless of mode");
+
+    fpd::sim::PowerSeqModel power_model;
+    power_model.reset();
+    power_model.set_inputs({{"target_mode", 0U}, {"vgl_stable", 1U}, {"vgh_stable", 1U}});
+    power_model.step();
+    Expect(fpd::sim::GetScalar(power_model.get_outputs(), "en_vgl") == 1U,
+           "power sequencer should enable VGL immediately in active modes");
+    Expect(fpd::sim::GetScalar(power_model.get_outputs(), "en_vgh") == 0U,
+           "power sequencer should hold VGH off until the inter-rail delay expires");
+    for (int i = 0; i < 699999; ++i) {
+        power_model.step();
+    }
+    Expect(fpd::sim::GetScalar(power_model.get_outputs(), "en_vgh") == 0U,
+           "power sequencer should keep VGH disabled until VGL has been stable for 5 ms");
+    const double vgh_before_ramp = power_model.vgh_voltage();
+    power_model.step();
+    Expect(fpd::sim::GetScalar(power_model.get_outputs(), "en_vgh") == 1U,
+           "power sequencer should enable VGH after the 5 ms VGL-only delay");
+    Expect(power_model.vgh_voltage() > vgh_before_ramp,
+           "power sequencer should ramp VGH upward instead of jumping to the target voltage");
+    for (int i = 0; i < 400000; ++i) {
+        power_model.step();
+    }
+    Expect(fpd::sim::GetScalar(power_model.get_outputs(), "power_good") == 1U,
+           "power sequencer should assert power_good once both rails finish ramping");
 
     std::cout << "test_panel_aux_models passed\n";
     return 0;

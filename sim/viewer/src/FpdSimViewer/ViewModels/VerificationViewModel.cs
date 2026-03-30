@@ -172,7 +172,7 @@ public sealed partial class VerificationViewModel : ObservableObject
         {
             EventLog.Add(new EventLogEntry(
                 FormatDuration(snapshot.ElapsedMicroseconds),
-                $"{ResolveStateName(_previousFsmState)} -> {snapshot.FsmStateName}"));
+                $"{SimulationSnapshot.ResolveStateName(_previousFsmState)} -> {snapshot.FsmStateName}"));
 
             while (EventLog.Count > 100)
             {
@@ -203,26 +203,6 @@ public sealed partial class VerificationViewModel : ObservableObject
     }
 
     private static string ToBit(bool value) => value ? "1" : "0";
-
-    private static string ResolveStateName(uint state)
-    {
-        return state switch
-        {
-            0U => "IDLE",
-            1U => "POWER_CHECK",
-            2U => "RESET",
-            3U => "WAIT_PREP",
-            4U => "BIAS_STAB",
-            5U => "XRAY_INTEG",
-            6U => "CONFIG_AFE",
-            7U => "READOUT",
-            8U => "SETTLE",
-            9U => "FRAME_DONE",
-            10U => "DONE",
-            15U => "ERROR",
-            _ => "UNKNOWN",
-        };
-    }
 
     private static string FormatDuration(double microseconds)
     {

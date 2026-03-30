@@ -4,20 +4,38 @@
 
 namespace fpd::sim {
 
+namespace {
+
+uint32_t NormalizeLaneCount(const uint32_t lane_count) {
+    return lane_count >= 4U ? 4U : 2U;
+}
+
+}  // namespace
+
 void Csi2LaneDistModel::reset() {
     packet_words_.clear();
     lane_count_ = 2;
     lane_sizes_ = {0, 0, 0, 0};
+    last_lanes_ = {};
+    interleave_state_ = 0;
     cycle_count_ = 0;
+}
+
+void Csi2LaneDistModel::SetLaneCount(const uint32_t lane_count) {
+    lane_count_ = NormalizeLaneCount(lane_count);
 }
 
 std::array<std::vector<uint8_t>, 4> Csi2LaneDistModel::SplitLanes(
     const std::vector<uint8_t>& packet,
     uint8_t lanes) const {
     std::array<std::vector<uint8_t>, 4> result;
-    const uint8_t active_lanes = (lanes < 2U) ? 2U : lanes;
+    const auto active_lanes = static_cast<uint8_t>(NormalizeLaneCount(lanes));
+    const bool swap_pairing = active_lanes == 2U && (interleave_state_ % 2U) == 1U;
     for (std::size_t index = 0; index < packet.size(); ++index) {
-        result[index % active_lanes].push_back(packet[index]);
+        const auto lane_index = swap_pairing
+            ? static_cast<std::size_t>((index + 1U) % active_lanes)
+            : index % active_lanes;
+        result[lane_index].push_back(packet[index]);
     }
     return result;
 }
@@ -28,16 +46,17 @@ void Csi2LaneDistModel::step() {
     for (const auto word : packet_words_) {
         packet_bytes.push_back(static_cast<uint8_t>(word & 0x00FFU));
     }
-    const auto lanes = SplitLanes(packet_bytes, static_cast<uint8_t>(lane_count_));
+    last_lanes_ = SplitLanes(packet_bytes, static_cast<uint8_t>(lane_count_));
     for (std::size_t index = 0; index < lane_sizes_.size(); ++index) {
-        lane_sizes_[index] = static_cast<uint32_t>(lanes[index].size());
+        lane_sizes_[index] = static_cast<uint32_t>(last_lanes_[index].size());
     }
+    ++interleave_state_;
     ++cycle_count_;
 }
 
 void Csi2LaneDistModel::set_inputs(const SignalMap& inputs) {
     packet_words_ = GetVector(inputs, "packet_bytes");
-    lane_count_ = GetScalar(inputs, "lane_count", lane_count_);
+    SetLaneCount(GetScalar(inputs, "lane_count", lane_count_));
 }
 
 SignalMap Csi2LaneDistModel::get_outputs() const {

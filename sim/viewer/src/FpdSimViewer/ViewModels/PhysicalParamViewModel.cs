@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using FpdSimViewer.Engine;
 using FpdSimViewer.Models;
 using FpdSimViewer.Models.Core;
+using System.Windows.Media;
 
 namespace FpdSimViewer.ViewModels;
 
@@ -53,6 +54,20 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
     [ObservableProperty]
     private double _vglTargetVoltage = SimulationEngine.VglDefault;
 
+    public Brush GateOnBackground => ResolveSpecBrush(GateOnMicroseconds, minimum: 1.0, maximum: 50.0);
+
+    public Brush GateSettleBackground => ResolveSpecBrush(GateSettleMicroseconds, minimum: 0.0, maximum: 10.0);
+
+    public Brush LineBackground => ResolveSpecBrush(LineMicroseconds, minimum: MinLineMicroseconds, maximum: 120.0);
+
+    public Brush IfsBackground => ResolveSpecBrush(IfsRange, minimum: 0, maximum: IfsMax);
+
+    public Brush IntegrateBackground => ResolveSpecBrush(IntegrateMilliseconds, minimum: 0.0, maximum: 160.0);
+
+    public Brush NResetBackground => ResolveSpecBrush(NResetScans, minimum: 0, maximum: 16);
+
+    public Brush CicProfileBackground => ResolveSpecBrush(CicProfile, minimum: 0, maximum: 15);
+
     public PhysicalParamViewModel(SimulationEngine engine, Action<SimulationSnapshot> snapshotCallback)
     {
         _engine = engine;
@@ -79,6 +94,7 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
             IsCicAvailable = comboConfig.AfeModel is AfeAfe2256Model;
             IfsMax = comboConfig.AfeTypeId == 1U ? 31 : 63;
             MinLineMicroseconds = FoundationConstants.ComboMinTLine((byte)comboConfig.ComboId) / CyclesPerMicrosecond;
+            RaiseSpecBackgroundChanged();
         }
         finally
         {
@@ -88,6 +104,7 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
 
     partial void OnGateOnMicrosecondsChanged(double value)
     {
+        OnPropertyChanged(nameof(GateOnBackground));
         if (_isUpdating)
         {
             return;
@@ -98,6 +115,7 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
 
     partial void OnGateSettleMicrosecondsChanged(double value)
     {
+        OnPropertyChanged(nameof(GateSettleBackground));
         if (_isUpdating)
         {
             return;
@@ -108,6 +126,7 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
 
     partial void OnLineMicrosecondsChanged(double value)
     {
+        OnPropertyChanged(nameof(LineBackground));
         if (_isUpdating)
         {
             return;
@@ -119,6 +138,7 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
 
     partial void OnIfsRangeChanged(int value)
     {
+        OnPropertyChanged(nameof(IfsBackground));
         if (_isUpdating)
         {
             return;
@@ -129,6 +149,7 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
 
     partial void OnIntegrateMillisecondsChanged(double value)
     {
+        OnPropertyChanged(nameof(IntegrateBackground));
         if (_isUpdating)
         {
             return;
@@ -142,6 +163,7 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
 
     partial void OnNResetScansChanged(int value)
     {
+        OnPropertyChanged(nameof(NResetBackground));
         if (_isUpdating)
         {
             return;
@@ -162,6 +184,7 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
 
     partial void OnCicProfileChanged(int value)
     {
+        OnPropertyChanged(nameof(CicProfileBackground));
         if (_isUpdating || !IsCicAvailable)
         {
             return;
@@ -170,6 +193,10 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
         var clamped = (ushort)Math.Clamp(value, 0, 15);
         WriteRegister(FoundationConstants.kRegCicProfile, clamped);
     }
+
+    partial void OnIfsMaxChanged(int value) => OnPropertyChanged(nameof(IfsBackground));
+
+    partial void OnMinLineMicrosecondsChanged(double value) => OnPropertyChanged(nameof(LineBackground));
 
     private void WriteRegister(byte address, ushort value)
     {
@@ -181,5 +208,26 @@ public sealed partial class PhysicalParamViewModel : ObservableObject
     {
         var cycles = (ushort)Math.Clamp(Math.Round(value * CyclesPerMicrosecond), minimum, maximum);
         return cycles;
+    }
+
+    private void RaiseSpecBackgroundChanged()
+    {
+        OnPropertyChanged(nameof(GateOnBackground));
+        OnPropertyChanged(nameof(GateSettleBackground));
+        OnPropertyChanged(nameof(LineBackground));
+        OnPropertyChanged(nameof(IfsBackground));
+        OnPropertyChanged(nameof(IntegrateBackground));
+        OnPropertyChanged(nameof(NResetBackground));
+        OnPropertyChanged(nameof(CicProfileBackground));
+    }
+
+    private static Brush ResolveSpecBrush(double value, double minimum, double maximum)
+    {
+        return value < minimum || value > maximum ? Brushes.LightCoral : Brushes.White;
+    }
+
+    private static Brush ResolveSpecBrush(int value, int minimum, int maximum)
+    {
+        return value < minimum || value > maximum ? Brushes.LightCoral : Brushes.White;
     }
 }

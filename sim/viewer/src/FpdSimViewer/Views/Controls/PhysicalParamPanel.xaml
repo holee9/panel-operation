@@ -39,15 +39,23 @@
 
                         <TextBlock Text="T_gate_on" VerticalAlignment="Center" />
                         <Slider Grid.Column="1" Minimum="1.0" Maximum="50.0" Value="{Binding GateOnMicroseconds}" />
-                        <TextBox Grid.Column="2" Text="{Binding GateOnMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
+                        <TextBox Grid.Column="2"
+                                 Background="{Binding GateOnBackground}"
+                                 Text="{Binding GateOnMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
 
                         <TextBlock Grid.Row="1" Text="T_settle" VerticalAlignment="Center" />
                         <Slider Grid.Row="1" Grid.Column="1" Minimum="0.0" Maximum="10.0" Value="{Binding GateSettleMicroseconds}" />
-                        <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding GateSettleMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
+                        <TextBox Grid.Row="1"
+                                 Grid.Column="2"
+                                 Background="{Binding GateSettleBackground}"
+                                 Text="{Binding GateSettleMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
 
                         <TextBlock Grid.Row="2" Text="T_line" VerticalAlignment="Center" />
                         <Slider Grid.Row="2" Grid.Column="1" Minimum="{Binding MinLineMicroseconds}" Maximum="120.0" Value="{Binding LineMicroseconds}" />
-                        <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding LineMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
+                        <TextBox Grid.Row="2"
+                                 Grid.Column="2"
+                                 Background="{Binding LineBackground}"
+                                 Text="{Binding LineMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
                     </Grid>
                 </Grid>
             </Border>
@@ -69,7 +77,9 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="IFS range" VerticalAlignment="Center" />
                         <Slider Grid.Column="1" Minimum="0" Maximum="{Binding IfsMax}" Value="{Binding IfsRange}" />
-                        <TextBox Grid.Column="2" Text="{Binding IfsRange, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Grid.Column="2"
+                                 Background="{Binding IfsBackground}"
+                                 Text="{Binding IfsRange, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
                     <StackPanel Grid.Row="2" Margin="0,10,0,0">
@@ -89,6 +99,7 @@
                                     Value="{Binding CicProfile}"
                                     IsEnabled="{Binding IsCicAvailable}" />
                             <TextBox Grid.Column="2"
+                                     Background="{Binding CicProfileBackground}"
                                      Text="{Binding CicProfile, UpdateSourceTrigger=PropertyChanged}"
                                      IsEnabled="{Binding IsCicAvailable}" />
                         </Grid>
@@ -116,11 +127,16 @@
 
                         <TextBlock Text="T_integrate (ms)" VerticalAlignment="Center" />
                         <Slider Grid.Column="1" Minimum="0.0" Maximum="160.0" Value="{Binding IntegrateMilliseconds}" />
-                        <TextBox Grid.Column="2" Text="{Binding IntegrateMilliseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" />
+                        <TextBox Grid.Column="2"
+                                 Background="{Binding IntegrateBackground}"
+                                 Text="{Binding IntegrateMilliseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" />
 
                         <TextBlock Grid.Row="1" Text="N_reset" VerticalAlignment="Center" />
                         <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="16" Value="{Binding NResetScans}" />
-                        <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding NResetScans, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Grid.Row="1"
+                                 Grid.Column="2"
+                                 Background="{Binding NResetBackground}"
+                                 Text="{Binding NResetScans, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
                 </Grid>
             </Border>

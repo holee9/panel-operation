@@ -21,14 +21,14 @@ module fpga_top_c3
     output logic        nv_lr,
     output logic        nv_rst,
     output logic [1:0]  nv_md,
-    input  logic        afe_dout_a_p,
-    input  logic        afe_dout_a_n,
-    input  logic        afe_dout_b_p,
-    input  logic        afe_dout_b_n,
-    input  logic        afe_dclk_p,
-    input  logic        afe_dclk_n,
-    input  logic        afe_fclk_p,
-    input  logic        afe_fclk_n,
+    input  logic [7:0]  afe_dout_a_p,
+    input  logic [7:0]  afe_dout_a_n,
+    input  logic [7:0]  afe_dout_b_p,
+    input  logic [7:0]  afe_dout_b_n,
+    input  logic [7:0]  afe_dclk_p,
+    input  logic [7:0]  afe_dclk_n,
+    input  logic [7:0]  afe_fclk_p,
+    input  logic [7:0]  afe_fclk_n,
     output logic        afe_mclk,
     output logic        afe_sync,
     output logic        afe_tp_sel,
@@ -55,9 +55,18 @@ module fpga_top_c3
   logic irq_line_ready;
   logic irq_frame_done;
   logic afe_aclk_unused;
+  logic [MAX_AFE_CHIPS-1:0] afe_dout_a_bus;
+  logic [MAX_AFE_CHIPS-1:0] afe_dout_b_bus;
+  logic [MAX_AFE_CHIPS-1:0] afe_dclk_bus;
+  logic [MAX_AFE_CHIPS-1:0] afe_fclk_bus;
   logic nt_stv1l_unused, nt_stv2l_unused, nt_stv1r_unused, nt_stv2r_unused;
   logic nt_cpv_l_unused, nt_cpv_r_unused, nt_lr_unused;
   logic nt_oe1_l_unused, nt_oe1_r_unused, nt_oe2_l_unused, nt_oe2_r_unused;
+
+  assign afe_dout_a_bus = {{(MAX_AFE_CHIPS-8){1'b0}}, afe_dout_a_p};
+  assign afe_dout_b_bus = {{(MAX_AFE_CHIPS-8){1'b0}}, afe_dout_b_p};
+  assign afe_dclk_bus = {{(MAX_AFE_CHIPS-8){1'b0}}, afe_dclk_p};
+  assign afe_fclk_bus = {{(MAX_AFE_CHIPS-8){1'b0}}, afe_fclk_p};
 
   detector_core #(
       .USE_AFE2256(1'b1),
@@ -111,10 +120,10 @@ module fpga_top_c3
       .afe_spi_sdi(afe_spi_sdi),
       .afe_spi_sdo(afe_spi_sdo),
       .afe_spi_cs_n(afe_spi_cs_n),
-      .afe_dout_a(afe_dout_a_p),
-      .afe_dout_b(afe_dout_b_p),
-      .afe_dclk(afe_dclk_p),
-      .afe_fclk(afe_fclk_p),
+      .afe_dout_a(afe_dout_a_bus),
+      .afe_dout_b(afe_dout_b_bus),
+      .afe_dclk(afe_dclk_bus),
+      .afe_fclk(afe_fclk_bus),
       .xray_prep_req(xray_prep_req),
       .xray_enable(xray_enable),
       .xray_on(xray_on),

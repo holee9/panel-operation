@@ -16,12 +16,17 @@ public:
     std::vector<Mismatch> compare(const SignalMap& rtl_outputs) const override;
     void generate_vectors(const std::string& output_dir) override;
 
+    void SetLaneCount(uint32_t lane_count);
     std::array<std::vector<uint8_t>, 4> SplitLanes(const std::vector<uint8_t>& packet, uint8_t lanes) const;
+    const std::array<std::vector<uint8_t>, 4>& last_lanes() const { return last_lanes_; }
+    uint32_t interleave_state() const { return interleave_state_; }
 
 private:
     std::vector<uint16_t> packet_words_;
     uint32_t lane_count_ = 2;
     std::array<uint32_t, 4> lane_sizes_{};
+    std::array<std::vector<uint8_t>, 4> last_lanes_{};
+    uint32_t interleave_state_ = 0;
 };
 
 }  // namespace fpd::sim

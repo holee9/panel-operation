@@ -24,12 +24,12 @@ module fpga_top_c6
     output logic        nt_oe1_r,
     output logic        nt_oe2_l,
     output logic        nt_oe2_r,
-    input  logic        afe_dout_a_p,
-    input  logic        afe_dout_a_n,
-    input  logic        afe_dout_b_p,
-    input  logic        afe_dout_b_n,
-    input  logic        afe_dclk_p,
-    input  logic        afe_dclk_n,
+    input  logic [11:0] afe_dout_a_p,
+    input  logic [11:0] afe_dout_a_n,
+    input  logic [11:0] afe_dout_b_p,
+    input  logic [11:0] afe_dout_b_n,
+    input  logic [11:0] afe_dclk_p,
+    input  logic [11:0] afe_dclk_n,
     output logic        afe_aclk,
     output logic        afe_sync,
     output logic        afe_reset,
@@ -56,9 +56,18 @@ module fpga_top_c6
   logic irq_frame_done;
   logic afe_mclk_unused;
   logic afe_tp_sel_unused;
+  logic [MAX_AFE_CHIPS-1:0] afe_dout_a_bus;
+  logic [MAX_AFE_CHIPS-1:0] afe_dout_b_bus;
+  logic [MAX_AFE_CHIPS-1:0] afe_dclk_bus;
+  logic [MAX_AFE_CHIPS-1:0] afe_fclk_bus;
   logic nv_sd1_unused, nv_sd2_unused, nv_clk_unused, nv_oe_unused;
   logic nv_ona_unused, nv_lr_unused, nv_rst_unused;
   logic [1:0] nv_md_unused;
+
+  assign afe_dout_a_bus = {{(MAX_AFE_CHIPS-12){1'b0}}, afe_dout_a_p};
+  assign afe_dout_b_bus = {{(MAX_AFE_CHIPS-12){1'b0}}, afe_dout_b_p};
+  assign afe_dclk_bus = {{(MAX_AFE_CHIPS-12){1'b0}}, afe_dclk_p};
+  assign afe_fclk_bus = '0;
 
   detector_core #(
       .USE_AFE2256(1'b0),
@@ -112,10 +121,10 @@ module fpga_top_c6
       .afe_spi_sdi(afe_spi_sdi),
       .afe_spi_sdo(afe_spi_sdo),
       .afe_spi_cs_n(afe_spi_cs_n),
-      .afe_dout_a(afe_dout_a_p),
-      .afe_dout_b(afe_dout_b_p),
-      .afe_dclk(afe_dclk_p),
-      .afe_fclk(1'b0),
+      .afe_dout_a(afe_dout_a_bus),
+      .afe_dout_b(afe_dout_b_bus),
+      .afe_dclk(afe_dclk_bus),
+      .afe_fclk(afe_fclk_bus),
       .xray_prep_req(xray_prep_req),
       .xray_enable(xray_enable),
       .xray_on(xray_on),

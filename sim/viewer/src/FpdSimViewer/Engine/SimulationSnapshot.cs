@@ -198,7 +198,7 @@ public sealed record SimulationSnapshot(
         return (progress, label);
     }
 
-    private static string ResolveStateName(uint state)
+    internal static string ResolveStateName(uint state)
     {
         return state switch
         {
