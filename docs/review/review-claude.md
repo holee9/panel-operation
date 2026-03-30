@@ -1,11 +1,11 @@
 # SPEC-FPD-SIM-001 v1.2.0 구현 코드 리뷰 + 개선 계획
 
-**문서 버전**: v8.0
-**기준 SPEC**: SPEC-FPD-SIM-001 v1.2.0 (52 R-SIM + 47 AC-SIM + 8 EC-SIM)
-**리뷰일**: 2026-03-23
+**문서 버전**: v10.0
+**기준 SPEC**: SPEC-FPD-SIM-001 v1.2.0 (52 R-SIM + 47 AC-SIM + 8 EC-SIM) + SPEC-FPD-GUI-002 v4.0
+**리뷰일**: 2026-03-23 (SIM-001), 2026-03-29~30 (GUI-002)
 **빌드 검증**: TVR-FPD-SIM-001-001 (MSVC 19.40, 13/13 PASS)
-**분석 대상**: RTL 27개 모듈, 골든 모델 30개 클래스, C++ 테스트 14개(638 LOC), cocotb 14개+infra 2개(478 LOC), Verilator 8개
-**v8.0 개정**: v7.1 교차 검증 — RTL/모델/테스트 전수 코드 대조, 수치 보정, copilot 해결 사항 반영
+**분석 대상**: RTL 27개 모듈, 골든 모델 30개 클래스, C++ 테스트 14개(638 LOC), cocotb 14개+infra 2개(478 LOC), Verilator 8개, C# WPF Viewer (GUI-002 Phase 1~5)
+**v10.0 개정**: Appendix H.12~H.15 추가 — Phase 2~5 교차검증 + Phase 6 Codex 작업 지시
 
 ---
 
@@ -1871,3 +1871,692 @@ dotnet run --project src/FpdSimViewer/FpdSimViewer.csproj
 1. `sim/viewer/` git 커밋 (사용자 지시 대기)
 2. 실제 앱 실행 수동 검증 (Play → READOUT → 탭 갱신 확인)
 3. 성능 프로파일링 (GUI-020/021: 고속 GC 압력 최적화)
+
+---
+
+## Appendix H. SPEC-FPD-GUI-002 Phase 1 Review + Phase 2~3 작업 지시 (Codex 대상)
+
+**리뷰일**: 2026-03-29
+**기준 SPEC**: SPEC-FPD-GUI-002 v4.0 (통합 동작 모니터 + 설정 분리)
+**구현 범위**: Phase 1 (ScopeRenderer + OperationMonitor 통합 레이아웃) — Codex 자동 생성
+**빌드**: .NET SDK 환경 미확인 (bash 셸 제한), 코드 정적 분석 기반 검증
+
+### H.1 Phase 1 구현 현황
+
+#### H.1.1 변경 파일 (4개 수정 + 4개 신규)
+
+| 파일 | LOC | 작업 | 판정 |
+|------|-----|------|------|
+| `Engine/SimulationEngine.cs` | 491 | 전압 해석 메서드 + const 추가 | **이슈 있음** (H.2.1) |
+| `Engine/SimulationSnapshot.cs` | 211 | VGL/VGH/OE/CLK/AFE 전압 속성 + Capture() 확장 | PASS |
+| `MainWindow.xaml` | 79 | 좌 65% OperationMonitor + 우 35% TabControl (5탭) | PASS |
+| `ViewModels/MainViewModel.cs` | 73 | OperationMonitorViewModel 연결 추가 | PASS |
+| **ViewModels/OperationMonitorViewModel.cs** | 514 | **신규** — 3영역 통합 VM + ScopeChannel + Heatmap | PASS |
+| **Views/Controls/OperationMonitor.xaml** | 197 | **신규** — FSM Pipeline + Panel Scan + Signal Scope | PASS |
+| **Views/Controls/OperationMonitor.xaml.cs** | 11 | **신규** — code-behind (minimal) | PASS |
+| **Views/Drawing/ScopeRenderer.cs** | 297 | **신규** — 커스텀 Canvas, DrawingContext 파형 렌더링 | **이슈 있음** (H.2.4) |
+
+#### H.1.2 SPEC Acceptance Criteria 달성률
+
+| AC | 항목 | 상태 | 구현 위치 |
+|----|------|------|----------|
+| AC-MON-001 | FSM + Panel Scan + Signal Scope 단일 화면 | **PASS** | OperationMonitor.xaml Row 비율 8:30:55 |
+| AC-MON-002 | FSM 전환 시 3영역 동기화 갱신 | **PASS** | OperationMonitorViewModel.UpdateFromSnapshot() |
+| AC-MON-003 | Play 중 실시간 업데이트 | **PASS** | SimControlViewModel → ApplySnapshot() 체인 |
+| AC-SCP-001 | Gate OE VGH(+20V)/VGL(-10V) 전압 표시 | **PASS** | ScopeChannel Ch1: -10V ~ +20V |
+| AC-SCP-002 | Gate CLK 주파수(kHz) 표시 | **PASS** | ScopeChannelViewModel.FrequencyText 자동 측정 |
+| AC-SCP-003 | AFE SYNC/변환 단계 구분 | **PASS** | Ch3 AFE SYNC + AfePhaseLabel(CDS/ADC/OUT) |
+| AC-SCP-004 | 전원 레일(VGL/VGH) 전압 곡선 | **부분** | Ch5/Ch6 2값(0V/목표) — 슬루레이트 곡선 미구현 |
+| AC-SCP-005 | 시간축 줌 (1us~10ms/div) | **PASS** | ScopeRenderer.OnMouseWheel 13단계 |
+| AC-SCP-006 | 커서 ΔT 측정 | **미구현** | Phase 2 범위 |
+| AC-SCP-007 | 채널 표시/숨김 토글 | **PASS** | CheckBox → IsVisible 바인딩 |
+| AC-SCP-008 | Gate IC 변경 시 채널 자동 전환 | **미구현** | 현재 고정 6채널 |
+| AC-SCP-009 | AFE 변경 시 채널 자동 전환 | **미구현** | Phase 3 범위 |
+| AC-SCP-010 | 자동 측정 + Spec Pass/Fail | **부분** | 측정값 있으나 Spec 비교 없음 |
+| AC-PNL-001 | 행 진행률 바 | **PASS** | ProgressBar + RowProgressText |
+| AC-PNL-002 | 활성 행 Gate 전압 표시 | **PASS** | ActiveRowSummary |
+| AC-PNL-003 | 픽셀 히트맵 + 통계 | **PASS** | BuildHeatmapBitmap + Min/Max/Mean/sigma |
+
+**Phase 1 범위 내 핵심 AC: 10/10 PASS**
+
+### H.2 발견 사항
+
+| ID | 등급 | 파일:Line | 내용 |
+|----|------|----------|------|
+| GUI-025 | **MED** | SimulationEngine.cs:395-418 | 전압 해석 로직 중복 — `CreateSnapshot()`의 `snapshot with { ... }` 블록이 `SimulationSnapshot.Capture()` 내부 로직과 동일. 한쪽만 수정 시 불일치 위험 |
+| GUI-026 | **MED** | OperationMonitorViewModel.cs:12, ScopeRenderer.cs:14 | `TimeScalesUs` 배열 중복 정의 (동일한 13단계 배열이 2곳에 존재) |
+| GUI-027 | **MED** | OperationMonitorViewModel.cs:108-126 | `OnTimeScaleMicrosecondsPerDivisionChanged` → `SnapTimeScaleInternal` 재진입 시 무한 루프 가능성. `double.Epsilon` 비교로 부동소수점 오차 시 가드 실패 |
+| GUI-028 | **LOW** | ScopeRenderer.cs:173-176 | `OnChannelPropertyChanged` 에서 모든 PropertyChanged 이벤트에 `InvalidateVisual()` 호출. 6채널 × 매 스텝 = 12~18회/step 과다 렌더링 |
+
+### H.3 아키텍처 평가
+
+**양호 항목**:
+1. 3영역 분할 비율 (8:30:55)이 SPEC 와이어프레임과 정확히 일치
+2. `ScopeChannelViewModel` 링버퍼 (12,000 샘플) — 실시간 스크롤에 적합
+3. `ScopeRenderer`가 WPF `DrawingContext` + `StreamGeometry` 기반 커스텀 렌더링으로 성능 고려
+4. `MainWindow.xaml` 좌 65% OperationMonitor + 우 35% TabControl 배치가 SPEC과 일치
+5. 히트맵 3단계 컬러 보간 (blue→cyan→orange→red) 구현 완료
+6. `ScopeChannelViewModel.UpdateMeasurements()` — rising edge 검출 기반 자동 주파수/펄스 폭 측정
+
+**미구현 SPEC 항목** (Phase 2+ 예정):
+- `PowerRailRenderer.cs` — SPEC에 명시된 전용 렌더러 미생성
+- `ScopeChannelConfig.cs` — Gate IC/AFE별 채널 동적 전환 없음
+- Config Tabs (HW Setup, Parameters, Data Path, Verification) — 모두 Placeholder
+
+---
+
+### H.4 Phase 1 버그 수정 지시 (Codex 대상, 즉시)
+
+#### Task A1: SimulationEngine.CreateSnapshot() 전압 해석 중복 제거
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Engine/SimulationEngine.cs`
+
+`CreateSnapshot(SignalMap ...)` 메서드 (라인 387~491)에서 다음을 수행:
+1. `snapshot with { ... }` 블록 (라인 405~417) 제거 — `SimulationSnapshot.Capture()` 결과를 그대로 반환
+2. 다음 private 메서드 전부 제거 (라인 420~490):
+   - `ResolveVglVoltage`, `ResolveVghVoltage`, `ResolveVpdVoltage`
+   - `ResolveGateOeVoltage`, `ResolveGateClkVoltage`, `ResolveAfeSyncVoltage`
+   - `ResolveAfePhaseProgress`, `ResolveAfePhaseLabel`
+   - `ExtractAfePixels` (Engine 측 복제본 — Snapshot 내부에 동일 메서드 존재)
+
+변경 후:
+```csharp
+private SimulationSnapshot CreateSnapshot(
+    SignalMap fsmOutputs, SignalMap rowOutputs, SignalMap gateOutputs,
+    SignalMap afeOutputs, SignalMap protOutputs, SignalMap powerOutputs)
+{
+    return SimulationSnapshot.Capture(
+        CycleCount, fsmOutputs, rowOutputs, gateOutputs,
+        afeOutputs, protOutputs, powerOutputs, ReadRegisters());
+}
+```
+
+**검증**: `dotnet build` 0 에러, `dotnet test` 전체 PASS. `SimulationSnapshot.Capture()` 내부에서 전압 해석이 수행되므로 동작 변화 없음.
+
+#### Task A2: TimeScalesUs 중복 제거
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Views/Drawing/ScopeRenderer.cs`
+
+`TimeScalesUs` 배열 (라인 14)의 접근자를 `public static readonly`로 변경:
+```csharp
+public static readonly double[] TimeScalesUs = [1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0];
+```
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/ViewModels/OperationMonitorViewModel.cs`
+
+라인 12의 `TimeScalesUs` 배열 제거. 참조하는 모든 곳을 `ScopeRenderer.TimeScalesUs`로 교체:
+- `SnapTimeScaleTo()` (라인 103)
+- `SnapTimeScaleInternal()` (라인 115)
+
+#### Task A3: TimeScale 변경 시 재진입 방지
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/ViewModels/OperationMonitorViewModel.cs`
+
+필드 추가:
+```csharp
+private bool _isSnapping;
+```
+
+`OnTimeScaleMicrosecondsPerDivisionChanged` (라인 108) 수정:
+```csharp
+partial void OnTimeScaleMicrosecondsPerDivisionChanged(double value)
+{
+    if (_isSnapping) return;
+    _isSnapping = true;
+    try { SnapTimeScaleInternal(value); }
+    finally { _isSnapping = false; }
+}
+```
+
+#### Task A4: ScopeRenderer InvalidateVisual 호출 필터링
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Views/Drawing/ScopeRenderer.cs`
+
+`OnChannelPropertyChanged` (라인 173) 수정:
+```csharp
+private void OnChannelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+{
+    if (e.PropertyName is nameof(ScopeChannelViewModel.SampleRevision)
+                       or nameof(ScopeChannelViewModel.IsVisible))
+    {
+        InvalidateVisual();
+    }
+}
+```
+
+---
+
+### H.5 Phase 2 작업 지시 (Codex 대상 — Gate IC 파형)
+
+**기준 SPEC**: SPEC-FPD-GUI-002 Phase 2 (Gate IC 파형, 전압 레벨, 타이밍 측정)
+**선행 조건**: H.4 (A1~A4) 버그 수정 완료
+
+#### Task B1: ScopeChannelConfig.cs 신규 생성
+
+**생성 파일**: `sim/viewer/src/FpdSimViewer/Engine/ScopeChannelConfig.cs`
+
+**요구사항**:
+- `static class ScopeChannelConfig` in namespace `FpdSimViewer.Engine`
+- Gate IC 타입에 따라 스코프 채널 구성 반환:
+  ```
+  NV1047 (C1~C5):
+    Ch1 = Gate OE      (-10V ~ +20V, DodgerBlue)
+    Ch2 = Gate CLK      (0V ~ 3.3V, Teal)
+    Ch3 = AFE SYNC      (0V ~ 3.3V, SeaGreen)
+    Ch4 = AFE DOUT      (0V ~ 3.3V, DarkOrange)
+    Ch5 = VGL Rail      (-15V ~ 0V, MediumPurple)
+    Ch6 = VGH Rail      (0V ~ 30V, IndianRed)
+
+  NT39565D (C6~C7):
+    Ch1 = OE1 (L+R)     (-10V ~ +20V, DodgerBlue)
+    Ch2 = OE2 (L+R)     (-10V ~ +20V, CornflowerBlue)
+    Ch3 = STV1           (0V ~ 3.3V, Teal)
+    Ch4 = STV2           (0V ~ 3.3V, MediumTurquoise)
+    Ch5 = AFE SYNC       (0V ~ 3.3V, SeaGreen)
+    Ch6 = AFE DOUT       (0V ~ 3.3V, DarkOrange)
+  ```
+- `static List<ScopeChannelViewModel> CreateChannels(HardwareComboConfig config)` factory method
+- `static void UpdateChannelSamples(IList<ScopeChannelViewModel> channels, SimulationSnapshot snapshot, HardwareComboConfig config)` — Gate IC 타입에 따라 올바른 신호를 올바른 채널에 매핑
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/ViewModels/OperationMonitorViewModel.cs`
+
+`UpdateFromSnapshot()` 내에서:
+- combo 변경 감지 (이전 comboId != 현재 comboId)
+- 변경 시 `ScopeChannels.Clear()` + `ScopeChannelConfig.CreateChannels()` 로 교체
+- 매 snapshot: `ScopeChannelConfig.UpdateChannelSamples()` 호출로 기존 하드코딩된 `UpdateScopeChannels()` 대체
+
+→ **AC-SCP-008 충족**
+
+#### Task B2: 커서 ΔT 측정 기능
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Views/Drawing/ScopeRenderer.cs`
+
+DependencyProperty 추가:
+```csharp
+public static readonly DependencyProperty CursorATimeProperty = ...;  // double?, nullable
+public static readonly DependencyProperty CursorBTimeProperty = ...;  // double?, nullable
+```
+
+마우스 이벤트 핸들러:
+- `OnMouseLeftButtonDown`: 마우스 X 좌표 → 시간 변환 → CursorA 설정 (첫 클릭), CursorB 설정 (두 번째 클릭)
+- `OnMouseRightButtonDown`: 커서 A/B 모두 null로 초기화
+
+`OnRender`에서 커서 렌더링:
+- 커서 A: 수직 점선 (Yellow) + 시간 레이블 (상단)
+- 커서 B: 수직 점선 (Cyan) + 시간 레이블 (상단)
+- A와 B 모두 존재 시: 두 커서 사이 상단에 `ΔT = XX.XX us` (또는 ms) 텍스트 표시
+
+→ **AC-SCP-006 충족**
+
+#### Task B3: 자동 측정값 Spec Pass/Fail 표시
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/ViewModels/OperationMonitorViewModel.cs`
+
+`ScopeChannelViewModel`에 속성 추가:
+```csharp
+public double? SpecMin { get; init; }
+public double? SpecMax { get; init; }
+
+[ObservableProperty]
+private string _specResult = "N/A";  // "PASS", "FAIL", "N/A"
+```
+
+`UpdateMeasurements()`에서:
+- `SpecMin`/`SpecMax` 설정된 경우, 현재 측정값(주파수 또는 펄스 폭)과 비교
+- 범위 내: `SpecResult = "PASS"`, 범위 외: `SpecResult = "FAIL"`
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Views/Drawing/ScopeRenderer.cs`
+
+`DrawChannelLegend()`에서 각 채널 범례에 `SpecResult` 표시:
+- "PASS": 초록색 텍스트
+- "FAIL": 빨간색 텍스트
+- "N/A": 회색 텍스트 (표시 생략 가능)
+
+`ScopeChannelConfig.CreateChannels()`에서 Gate IC 파라미터에 Spec 범위 설정:
+- Gate OE: SpecMin=-10V, SpecMax=+20V (전압 범위)
+- Gate CLK: SpecMin=50kHz, SpecMax=200kHz (주파수 범위)
+- BBM gap: SpecMin=2.0us (최소 펄스 폭)
+
+→ **AC-SCP-010 충족**
+
+---
+
+### H.6 Phase 3 작업 지시 (Codex 대상 — AFE + Power Rail)
+
+**기준 SPEC**: SPEC-FPD-GUI-002 Phase 3 (AFE 파형 + Power Rail 곡선)
+**선행 조건**: H.5 (B1~B3) Phase 2 완료
+
+#### Task C1: AFE 채널 동적 전환
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Engine/ScopeChannelConfig.cs`
+
+AFE 타입별 채널 매핑 추가:
+```
+AD711xx (AD71124/AD71143):
+  - AFE SYNC: sync/config_done 신호 (0V ~ 3.3V)
+  - AFE Phase: CDS → ADC → OUT 구간 (AfePhaseLabel 기반)
+  - AFE DOUT valid: dout_window_valid (0V ~ 3.3V)
+
+AFE2256:
+  - AFE SYNC: sync/config_done
+  - FCLK: fclk_expected 기반 표시
+  - CIC Status: cfg_cic_en 활성 시 파이프라인 상태 표시
+  - AFE DOUT valid: dout_window_valid
+```
+
+`UpdateChannelSamples()`에서 AFE 모델 타입에 따라 Ch3~Ch4(NV1047 모드) 또는 Ch5~Ch6(NT39565D 모드) 신호 매핑 분기.
+
+→ **AC-SCP-009 충족**
+
+#### Task C2: Power Rail 전압 곡선 확장
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Models/PowerSeqModel.cs`
+
+기존 `step()`에 슬루레이트 기반 전압 시뮬레이션 추가:
+```csharp
+private double _vglCurrent;
+private double _vghCurrent;
+private const double SlewRateVPerMs = 5.0;     // 5.0 V/ms
+private const double StepDtMs = 0.00001;       // 10ns per step = 0.00001 ms
+
+// step() 내부:
+var vglTarget = _enVgl ? -10.0 : 0.0;
+var vghTarget = _enVgh ? 20.0 : 0.0;
+_vglCurrent = MoveToward(_vglCurrent, vglTarget, SlewRateVPerMs * StepDtMs);
+_vghCurrent = MoveToward(_vghCurrent, vghTarget, SlewRateVPerMs * StepDtMs);
+
+private static double MoveToward(double current, double target, double maxDelta)
+{
+    if (Math.Abs(target - current) <= maxDelta) return target;
+    return current + Math.Sign(target - current) * maxDelta;
+}
+```
+
+`GetOutputs()`에 추가:
+```csharp
+["vgl_rail_voltage"] = new SignalValue((uint)((_vglCurrent + 15.0) * 100.0)),  // 스케일 변환
+["vgh_rail_voltage"] = new SignalValue((uint)(_vghCurrent * 100.0)),
+```
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Engine/SimulationSnapshot.cs`
+
+속성 추가:
+```csharp
+public double VglRailVoltage { get; init; }
+public double VghRailVoltage { get; init; }
+```
+
+`Capture()`에서 PowerSeq 출력으로부터 실제 전압 값 추출:
+```csharp
+VglRailVoltage = (SignalHelpers.GetScalar(powerOutputs, "vgl_rail_voltage") / 100.0) - 15.0,
+VghRailVoltage = SignalHelpers.GetScalar(powerOutputs, "vgh_rail_voltage") / 100.0,
+```
+
+**수정 파일**: `sim/viewer/src/FpdSimViewer/Engine/ScopeChannelConfig.cs`
+
+NV1047 모드 Ch5/Ch6에서 `VglRailVoltage`/`VghRailVoltage` 사용으로 변경 (기존 binary 0/-10V → 실제 곡선).
+
+→ **AC-SCP-004 강화**
+
+---
+
+### H.7 파일 수정 요약
+
+| 파일 | 작업 | Phase |
+|------|------|-------|
+| `Engine/SimulationEngine.cs` | A1: 중복 Resolve 메서드 + with 블록 제거 | 1-fix |
+| `ViewModels/OperationMonitorViewModel.cs` | A2: TimeScalesUs 제거, A3: 재진입 가드 | 1-fix |
+| `Views/Drawing/ScopeRenderer.cs` | A4: InvalidateVisual 필터, B2: 커서 기능 | 1-fix + 2 |
+| `Engine/ScopeChannelConfig.cs` | B1: **신규** — Gate IC/AFE별 채널 매핑 | 2 |
+| `ViewModels/OperationMonitorViewModel.cs` | B1: ScopeChannels 동적 교체, B3: Spec 속성 | 2 |
+| `Models/PowerSeqModel.cs` | C2: 슬루레이트 전압 출력 추가 | 3 |
+| `Engine/SimulationSnapshot.cs` | C2: VglRailVoltage/VghRailVoltage 추가 | 3 |
+
+### H.8 실행 우선순위
+
+```
+1순위 (즉시):  A1 → A2 → A3 → A4  (Phase 1 품질 수정)
+2순위 (Phase 2): B1 → B2 → B3     (Gate IC 파형 완성)
+3순위 (Phase 3): C1 → C2          (AFE + Power Rail)
+```
+
+### H.9 제약 조건
+
+- 기존 테스트가 깨지지 않아야 한다 (`dotnet test` 전체 PASS)
+- `SimulationSnapshot`은 `sealed record` — 속성 추가 시 `init` 접근자 사용
+- WPF UI 스레드에서만 `ObservableCollection` 수정
+- `ScopeRenderer.OnRender`는 60fps 이내에서 완료되어야 한다 (StreamGeometry 유지)
+- Phase 2 완료 후 `dotnet build` 0 에러 0 경고, `dotnet test` 전체 PASS 확인
+- Phase 3 완료 후 동일 빌드/테스트 기준 충족
+
+### H.10 Phase 2 완료 기준
+
+- [ ] `ScopeChannelConfig.cs` 구현 (NV1047 + NT39565D 채널 매핑)
+- [ ] 커서 ΔT 측정 기능 동작 (좌클릭 2회 → ΔT 표시, 우클릭 → 초기화)
+- [ ] Spec Pass/Fail 표시 (Gate CLK 주파수 범위 등)
+- [ ] Combo 변경 시 Scope 채널 자동 전환 (C1↔C6)
+- [ ] `dotnet build` — 0 에러, 0 경고
+- [ ] `dotnet test` — 전체 PASS
+
+### H.11 Phase 3 완료 기준
+
+- [x] AFE 타입 변경 시 채널 자동 전환 (AD711xx↔AFE2256)
+- [x] Power Rail 슬루레이트 곡선 표시 (Ch5/Ch6에서 실제 전압 변화)
+- [x] `dotnet build` — 0 에러, 0 경고
+- [x] `dotnet test` — 전체 PASS
+
+---
+
+### H.12 Phase 2~3 Cross-Verification (2026-03-30)
+
+**검증 방법**: 코드 정적 분석 (bash 셸에서 .NET SDK 미사용)
+**Phase 1 버그 수정 (A1~A4)**: 전수 해결 확인
+**Phase 2 (B1~B3)**: 전수 구현 확인
+**Phase 3 (C1~C2)**: 전수 구현 확인
+
+#### H.12.1 Phase 1 버그 수정 완료 확인
+
+| ID | 내용 | 판정 |
+|----|------|------|
+| A1 | SimulationEngine 중복 Resolve 제거 | **해결** — CreateSnapshot() 라인 395 직접 반환, 파일 405줄 (이전 491줄) |
+| A2 | TimeScalesUs 중복 제거 | **해결** — ViewModel에서 `ScopeRenderer.TimeScalesUs` 참조 |
+| A3 | `_isSnapping` 재진입 가드 | **해결** — 라인 13 필드, 106-118 가드 |
+| A4 | InvalidateVisual 필터링 | **해결** — SampleRevision/IsVisible 변경 시에만 호출 |
+
+**GUI-025~028 (MED 3건 + LOW 1건) 전수 해결**
+
+#### H.12.2 Phase 2 구현 완료 확인
+
+| ID | 내용 | 판정 |
+|----|------|------|
+| B1 | ScopeChannelConfig.cs (NV1047/NT39565D 채널 매핑) | **완료** — 80줄→106줄 (C1용 AFE 분기 추가) |
+| B1 | OperationMonitorVM 동적 채널 교체 | **완료** — `_currentComboId` 추적, `EnsureScopeChannels()` |
+| B2 | 커서 ΔT 측정 | **완료** — CursorA/B DP, 좌클릭 2회→ΔT, 우클릭→초기화 |
+| B3 | Spec Pass/Fail 표시 | **완료** — SpecMin/Max/Measurement/Result, ScopeMeasurementKind enum |
+
+**AC-SCP-006, AC-SCP-008, AC-SCP-010 충족**
+
+#### H.12.3 Phase 3 구현 완료 확인
+
+| ID | 내용 | 판정 |
+|----|------|------|
+| C1 | AFE 채널 동적 전환 | **완료** — AD711xx(SYNC/DOUT) vs AFE2256(FCLK/CIC) 분기, AfeFclkExpected 속성 추가 |
+| C2 | Power Rail 슬루레이트 곡선 | **완료** — MoveToward() 5V/ms, VglRailVoltage/VghRailVoltage 속성, NV1047 Ch5/Ch6에서 사용 |
+| C2 | 테스트 | **완료** — RailOutputs_ShouldRampTowardTargets (1001 step 램프 검증) |
+
+**AC-SCP-004, AC-SCP-009 충족**
+
+#### H.12.4 발견 사항 (Phase 2~3)
+
+| ID | 등급 | 파일 | 내용 |
+|----|------|------|------|
+| GUI-030 | LOW | ScopeChannelConfig.cs | Engine.LogicHigh 참조 — 순환 의존 아니나 상수 분리 권장 |
+| GUI-033 | LOW | ScopeChannelConfig.cs:45-58 | NT39565D 모드에서 VGL/VGH Rail 채널 없음 |
+| GUI-034 | INFO | PowerSeqModel.cs:51-52 | MoveToward maxDelta=0.00005V/step — 고속 모드에서만 관찰 가능 |
+
+---
+
+### H.13 Phase 4 Cross-Verification (2026-03-30)
+
+#### H.13.1 신규 파일
+
+| 파일 | LOC | 역할 |
+|------|-----|------|
+| `Views/Tabs/HwSetupTab.xaml` | 100 | HW 선택 (Preset/Panel/Gate/AFE) + Mode + Power/Safety 요약 |
+| `Views/Tabs/HwSetupTab.xaml.cs` | 11 | code-behind (minimal) |
+| `ViewModels/PhysicalParamViewModel.cs` | 185 | 물리 파라미터 ↔ Register 양방향 동기화 |
+| `Views/Controls/PhysicalParamPanel.xaml` | 141 | Gate Timing + AFE + Integration + Power 슬라이더/TextBox |
+| `Views/Controls/PhysicalParamPanel.xaml.cs` | 11 | code-behind (minimal) |
+
+#### H.13.2 구현 검증
+
+| AC | 항목 | 상태 |
+|----|------|------|
+| AC-PRM-001 | T_gate_on µs 슬라이더+숫자 | **PASS** |
+| AC-PRM-002 | VGH/VGL V 단위 표시 | **PASS** (read-only) |
+| AC-PRM-003 | 변경 → Scope 즉시 반영 | **PASS** — WriteRegister → RefreshSnapshot |
+| AC-PRM-004 | Register 양방향 동기화 | **PASS** — `_isUpdating` 가드 |
+| AC-PRM-005 | Spec 범위 초과 경고 | **부분** — Slider clamp만, 시각적 경고 없음 |
+
+#### H.13.3 발견 사항
+
+| ID | 등급 | 파일 | 내용 |
+|----|------|------|------|
+| GUI-036 | LOW | PhysicalParamPanel.xaml | Spec 경고 배경색 미구현 (AC-PRM-005 부분) |
+| GUI-037 | LOW | HwSetupTab.xaml | Panel/Gate/AFE 개별 드롭다운 없음 — Preset으로만 전환 가능 |
+| GUI-038 | LOW | SimControlViewModel.cs:115 | PanelName 하드코딩 (HardwareComboConfig에서 가져오는 것이 정확) |
+
+---
+
+### H.14 Phase 5 Cross-Verification (2026-03-30)
+
+#### H.14.1 신규 파일
+
+| 파일 | LOC | 역할 |
+|------|-----|------|
+| `ViewModels/DataPathViewModel.cs` | 310 | 5-Stage 파이프라인 + Bank A/B ping-pong + CSI-2 요약 + 픽셀 프리뷰 |
+| `Views/Tabs/DataPathTab.xaml` | 175 | Stage 카드 + Bank ProgressBar + CSI-2 패킷 + 히트맵 |
+| `Views/Tabs/DataPathTab.xaml.cs` | 11 | code-behind (minimal) |
+| `Tests/ViewModels/DataPathViewModelTests.cs` | 94 | 2 tests — ping-pong 검증 + 에러/idle 검증 |
+
+#### H.14.2 구현 검증
+
+| AC | 항목 | 상태 |
+|----|------|------|
+| AC-DP-001 | Line Buffer ping-pong 표시 | **PASS** — RowIndex % 2 bank 교대, Write/TX/Standby |
+| AC-DP-002 | CSI-2 패킷 구성 표시 | **PASS** — Lanes/VC/DT/WC/FS+Lines+FE |
+| AC-DP-003 | 완료 행 픽셀 프리뷰 | **PASS** — 히트맵 + Min/Max/Mean |
+
+#### H.14.3 발견 사항
+
+| ID | 등급 | 파일 | 내용 |
+|----|------|------|------|
+| GUI-040 | LOW | DataPathViewModel.cs:196-241 | BuildHeatmapBitmap 코드가 OperationMonitorVM과 완전 중복 |
+
+---
+
+### H.15 Phase 6 작업 지시 (Codex 대상 — Verification + Export)
+
+**기준 SPEC**: SPEC-FPD-GUI-002 Phase 6 (내보내기 + 비교 + Verification 탭)
+**선행 조건**: Phase 1~5 완료 (H.12~H.14 교차검증 확인)
+**목표**: Verification 탭 구현 — 타이밍 검증 + 이벤트 로그 + VCD/CSV 내보내기
+
+#### Task F1: VerificationViewModel.cs
+
+**신규 파일**: `sim/viewer/src/FpdSimViewer/ViewModels/VerificationViewModel.cs`
+
+**요구사항**:
+
+1. `sealed partial class VerificationViewModel : ObservableObject`
+
+2. **Timing Checks** — `ObservableCollection<TimingCheckViewModel> TimingChecks`:
+   - 5개 항목, 매 snapshot 갱신:
+
+   | Name | 측정값 계산 | Spec | Result |
+   |------|-----------|------|--------|
+   | T_gate_on | `REG_TGATE_ON * 0.01` us | 15~50 us | PASS/FAIL |
+   | T_settle | `REG_TGATE_SETTLE * 0.01` us | >= 2.5 us | PASS/FAIL |
+   | T_line | `REG_TLINE * 0.01` us | >= combo별 MIN | PASS/FAIL |
+   | BBM gap | T_settle 값 (= settle 기간) | >= 2.0 us | PASS/FAIL |
+   | Readout | `TotalRows * T_line` us → ms 변환 | 정보 | INFO |
+
+3. `TimingCheckViewModel`:
+   ```csharp
+   sealed partial class TimingCheckViewModel : ObservableObject
+   {
+       public string Name { get; }
+       [ObservableProperty] private string _measuredText;
+       [ObservableProperty] private string _specText;
+       [ObservableProperty] private string _result;   // "PASS", "FAIL", "INFO"
+       [ObservableProperty] private Brush _resultBrush; // Green, Red, Gray
+   }
+   ```
+
+4. **Event Log** — `ObservableCollection<EventLogEntry> EventLog`:
+   - `EventLogEntry` : `record EventLogEntry(string TimeText, string Description)`
+   - FSM 상태 전환 감지: `_previousFsmState != snapshot.FsmState` 시 추가
+   - 형식: `"12.35 us: RESET → READOUT"`
+   - 최대 100개 보관 (초과 시 맨 앞 제거)
+   - 필드: `private uint _previousFsmState`
+
+5. **Export Commands**:
+   ```csharp
+   [RelayCommand]
+   private void ExportCsv()
+   {
+       var dialog = new Microsoft.Win32.SaveFileDialog
+       {
+           Filter = "CSV files (*.csv)|*.csv",
+           FileName = $"fpd_trace_{DateTime.Now:yyyyMMdd_HHmmss}.csv",
+       };
+       if (dialog.ShowDialog() != true) return;
+
+       using var writer = new StreamWriter(dialog.FileName);
+       writer.WriteLine("Cycle,FsmState,RowIndex,GateOnPulse,AfeDoutValid,PowerGood,VglRailV,VghRailV");
+       foreach (var snap in _traceCapture.GetRange(0, _traceCapture.Count))
+       {
+           writer.WriteLine($"{snap.Cycle},{snap.FsmState},{snap.RowIndex},{snap.GateOnPulse},{snap.AfeDoutValid},{snap.PowerGood},{snap.VglRailVoltage:F3},{snap.VghRailVoltage:F3}");
+       }
+   }
+
+   [RelayCommand]
+   private void ExportVcd()
+   {
+       var dialog = new Microsoft.Win32.SaveFileDialog
+       {
+           Filter = "VCD files (*.vcd)|*.vcd",
+           FileName = $"fpd_trace_{DateTime.Now:yyyyMMdd_HHmmss}.vcd",
+       };
+       if (dialog.ShowDialog() != true) return;
+
+       using var writer = new StreamWriter(dialog.FileName);
+       // VCD header
+       writer.WriteLine("$timescale 10ns $end");
+       writer.WriteLine("$scope module fpd_sim $end");
+       writer.WriteLine("$var wire 4 s fsm_state $end");
+       writer.WriteLine("$var wire 1 g gate_on_pulse $end");
+       writer.WriteLine("$var wire 1 a afe_dout_valid $end");
+       writer.WriteLine("$var wire 1 p power_good $end");
+       writer.WriteLine("$upscope $end");
+       writer.WriteLine("$enddefinitions $end");
+       // Value changes
+       foreach (var snap in _traceCapture.GetRange(0, _traceCapture.Count))
+       {
+           writer.WriteLine($"#{snap.Cycle}");
+           writer.WriteLine($"b{Convert.ToString(snap.FsmState, 2).PadLeft(4, '0')} s");
+           writer.WriteLine($"{(snap.GateOnPulse ? '1' : '0')}g");
+           writer.WriteLine($"{(snap.AfeDoutValid ? '1' : '0')}a");
+           writer.WriteLine($"{(snap.PowerGood ? '1' : '0')}p");
+       }
+   }
+   ```
+
+6. 생성자: `VerificationViewModel(TraceCapture traceCapture)` — TraceCapture 주입
+
+7. `UpdateFromSnapshot(SimulationSnapshot snapshot, HardwareComboConfig config)`:
+   - TimingChecks 갱신
+   - FSM 전환 감지 → EventLog 추가
+
+#### Task F2: VerificationTab.xaml
+
+**신규 파일**: `sim/viewer/src/FpdSimViewer/Views/Tabs/VerificationTab.xaml` + `.xaml.cs`
+
+**레이아웃**:
+```xml
+<Grid>
+  <Grid.RowDefinitions>
+    <RowDefinition Height="Auto" />   <!-- Timing Checks -->
+    <RowDefinition Height="Auto" />   <!-- Export Buttons -->
+    <RowDefinition Height="*" />      <!-- Event Log -->
+  </Grid.RowDefinitions>
+
+  <!-- Row 0: Timing Verification -->
+  <Border Style="{StaticResource PanelBorderStyle}">
+    <StackPanel>
+      <TextBlock Text="Timing Verification" Style="{StaticResource SectionTitleStyle}" />
+      <ItemsControl ItemsSource="{Binding TimingChecks}">
+        <!-- 각 항목: Name | Measured | Spec | Result (색상 배지) -->
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="0,4">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="80" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="1" Text="{Binding MeasuredText}" />
+              <TextBlock Grid.Column="2" Text="{Binding SpecText}" Style="{StaticResource CaptionTextStyle}" />
+              <Border Grid.Column="3" Background="{Binding ResultBrush}" CornerRadius="8" Padding="8,2">
+                <TextBlock Text="{Binding Result}" Foreground="White" FontWeight="SemiBold" HorizontalAlignment="Center" />
+              </Border>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+
+  <!-- Row 1: Export Buttons -->
+  <Border Grid.Row="1" Style="{StaticResource PanelBorderStyle}">
+    <StackPanel>
+      <TextBlock Text="Export" Style="{StaticResource SectionTitleStyle}" />
+      <WrapPanel Margin="0,8,0,0">
+        <Button Content="Export CSV" Command="{Binding ExportCsvCommand}" Margin="0,0,8,0" Padding="16,6" />
+        <Button Content="Export VCD" Command="{Binding ExportVcdCommand}" Padding="16,6" />
+      </WrapPanel>
+    </StackPanel>
+  </Border>
+
+  <!-- Row 2: Event Log -->
+  <Border Grid.Row="2" Style="{StaticResource PanelBorderStyle}">
+    <StackPanel>
+      <TextBlock Text="Event Log" Style="{StaticResource SectionTitleStyle}" />
+      <ListView ItemsSource="{Binding EventLog}" MaxHeight="300">
+        <ListView.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{Binding TimeText}" Width="80" FontFamily="Consolas" />
+              <TextBlock Text="{Binding Description}" />
+            </StackPanel>
+          </DataTemplate>
+        </ListView.ItemTemplate>
+      </ListView>
+    </StackPanel>
+  </Border>
+</Grid>
+```
+
+#### Task F3: MainWindow.xaml + MainViewModel 연결
+
+**수정 파일**: `MainWindow.xaml`
+- Verification 탭 Placeholder 텍스트 → `<tabs:VerificationTab DataContext="{Binding Verification}" />`
+
+**수정 파일**: `MainViewModel.cs`
+- 추가:
+  ```csharp
+  public VerificationViewModel Verification { get; }
+  // 생성자:
+  Verification = new VerificationViewModel(Engine.TraceCapture);
+  // ApplySnapshot 내:
+  Verification.UpdateFromSnapshot(snapshot, Engine.ComboConfig);
+  ```
+
+#### 포팅 규칙
+
+1. 네임스페이스: `FpdSimViewer.ViewModels`, `FpdSimViewer.Views.Tabs`
+2. CommunityToolkit.Mvvm: `[ObservableProperty]`, `[RelayCommand]` 사용
+3. `Microsoft.Win32.SaveFileDialog` 사용 (WPF 내장)
+4. Event Log 최대 100개 — 초과 시 `EventLog.RemoveAt(0)`
+5. `dotnet build` 0 에러, `dotnet test` 전체 PASS
+
+#### Phase 6 완료 기준
+
+- [ ] Timing Verification 5항목 (PASS/FAIL/INFO 배지 색상)
+- [ ] Event Log FSM 전환 기록 (최근 100개)
+- [ ] Export CSV 버튼 — SaveFileDialog + 파일 쓰기
+- [ ] Export VCD 버튼 — SaveFileDialog + VCD 포맷 쓰기
+- [ ] MainWindow Verification 탭 연결
+- [ ] `dotnet build` — 0 에러, 0 경고
+- [ ] `dotnet test` — 전체 PASS

@@ -111,6 +111,22 @@ public sealed partial class SimControlViewModel : ObservableObject, IDisposable
 
     public string PlayPauseLabel => IsPlaying ? "Pause" : "Play";
 
+    public string CurrentComboLabel => SelectedCombo is null ? string.Empty : $"C{SelectedCombo.Id}";
+
+    public string PanelName => $"{_engine.ComboConfig.Rows} x {_engine.ComboConfig.Cols} Panel";
+
+    public uint PanelRows => _engine.ComboConfig.Rows;
+
+    public uint PanelCols => _engine.ComboConfig.Cols;
+
+    public string GateIcName => _engine.ComboConfig.GateIcName;
+
+    public string AfeName => _engine.ComboConfig.AfeName;
+
+    public uint AfeChips => _engine.ComboConfig.AfeChips;
+
+    public string ModeLabel => SelectedMode?.Label ?? string.Empty;
+
     [RelayCommand]
     private void Reset()
     {
@@ -136,6 +152,7 @@ public sealed partial class SimControlViewModel : ObservableObject, IDisposable
     partial void OnSelectedComboChanged(ComboChoice value)
     {
         _engine.SetCombo(value.Id);
+        RaiseHardwareSummaryChanged();
         if (SelectedMode is not null)
         {
             _engine.SetMode((uint)SelectedMode.Mode);
@@ -147,6 +164,7 @@ public sealed partial class SimControlViewModel : ObservableObject, IDisposable
     partial void OnSelectedModeChanged(ModeChoice value)
     {
         _engine.SetMode((uint)value.Mode);
+        OnPropertyChanged(nameof(ModeLabel));
         _snapshotCallback(_engine.RefreshSnapshot());
     }
 
@@ -213,6 +231,17 @@ public sealed partial class SimControlViewModel : ObservableObject, IDisposable
         }
 
         _snapshotCallback(snapshot);
+    }
+
+    private void RaiseHardwareSummaryChanged()
+    {
+        OnPropertyChanged(nameof(CurrentComboLabel));
+        OnPropertyChanged(nameof(PanelName));
+        OnPropertyChanged(nameof(PanelRows));
+        OnPropertyChanged(nameof(PanelCols));
+        OnPropertyChanged(nameof(GateIcName));
+        OnPropertyChanged(nameof(AfeName));
+        OnPropertyChanged(nameof(AfeChips));
     }
 }
 

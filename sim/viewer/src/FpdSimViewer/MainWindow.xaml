@@ -25,20 +25,32 @@
                                    Margin="6,0,6,6"
                                    DataContext="{Binding}" />
 
-        <controls:RegisterEditorPanel DockPanel.Dock="Right"
-                                      Width="450"
-                                      DataContext="{Binding RegisterEditor}" />
+        <Grid Margin="6,0,6,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="65*" />
+                <ColumnDefinition Width="35*" />
+            </Grid.ColumnDefinitions>
 
-        <TabControl>
-            <TabItem Header="Panel Scan">
-                <tabs:PanelScanTab DataContext="{Binding PanelScan}" />
-            </TabItem>
-            <TabItem Header="FSM Diagram">
-                <tabs:FsmDiagramTab DataContext="{Binding FsmDiagram}" />
-            </TabItem>
-            <TabItem Header="Imaging Cycle">
-                <tabs:ImagingCycleTab DataContext="{Binding ImagingCycle}" />
-            </TabItem>
-        </TabControl>
+            <controls:OperationMonitor Grid.Column="0"
+                                       DataContext="{Binding OperationMonitor}" />
+
+            <TabControl Grid.Column="1">
+                <TabItem Header="HW Setup">
+                    <tabs:HwSetupTab DataContext="{Binding SimControl}" />
+                </TabItem>
+                <TabItem Header="Parameters">
+                    <controls:PhysicalParamPanel DataContext="{Binding PhysicalParameters}" />
+                </TabItem>
+                <TabItem Header="Registers">
+                    <controls:RegisterEditorPanel DataContext="{Binding RegisterEditor}" />
+                </TabItem>
+                <TabItem Header="Data Path">
+                    <tabs:DataPathTab DataContext="{Binding DataPath}" />
+                </TabItem>
+                <TabItem Header="Verification">
+                    <tabs:VerificationTab DataContext="{Binding Verification}" />
+                </TabItem>
+            </TabControl>
+        </Grid>
     </DockPanel>
 </Window>

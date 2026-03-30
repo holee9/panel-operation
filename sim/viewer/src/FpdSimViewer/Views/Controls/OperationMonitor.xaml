@@ -1,0 +1,197 @@
+<UserControl x:Class="FpdSimViewer.Views.Controls.OperationMonitor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:drawing="clr-namespace:FpdSimViewer.Views.Drawing"
+             mc:Ignorable="d">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="8*" />
+            <RowDefinition Height="30*" />
+            <RowDefinition Height="55*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource PanelBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="FSM State Pipeline" Style="{StaticResource SectionTitleStyle}" />
+
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding PipelineStates}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" Columns="6" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="4,0"
+                                    Padding="10,8"
+                                    CornerRadius="10"
+                                    Background="{Binding Fill}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Label}"
+                                               Foreground="{Binding Foreground}"
+                                               HorizontalAlignment="Center"
+                                               FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Detail}"
+                                               Foreground="{Binding Foreground}"
+                                               HorizontalAlignment="Center"
+                                               FontSize="11" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <WrapPanel Grid.Row="2" Margin="0,8,0,0">
+                    <TextBlock Text="{Binding CycleSummary}" FontWeight="SemiBold" />
+                    <TextBlock Text=" | " />
+                    <TextBlock Text="{Binding ElapsedSummary}" FontWeight="SemiBold" />
+                    <TextBlock Text=" | " />
+                    <TextBlock Text="{Binding FsmSummary}" FontWeight="SemiBold" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource PanelBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="2*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.ColumnSpan="2" Text="Panel Scan" Style="{StaticResource SectionTitleStyle}" />
+
+                <StackPanel Grid.Row="1" Grid.ColumnSpan="2">
+                    <DockPanel Margin="0,0,0,6">
+                        <TextBlock DockPanel.Dock="Left" Text="{Binding RowProgressText}" FontWeight="SemiBold" />
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding ActiveRowSummary}" FontWeight="SemiBold" />
+                    </DockPanel>
+                    <ProgressBar Minimum="0" Maximum="100" Height="18" Value="{Binding RowProgressPercent}" />
+                </StackPanel>
+
+                <Border Grid.Row="2"
+                        Grid.Column="0"
+                        Margin="0,10,10,0"
+                        Background="#FFF5F7FA"
+                        BorderBrush="{StaticResource Brush.Border}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="10">
+                    <StackPanel>
+                        <TextBlock Text="Panel Cross-Section" Style="{StaticResource CaptionTextStyle}" />
+                        <ItemsControl ItemsSource="{Binding PanelSegments}" Margin="0,8,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" Columns="72" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding Fill}"
+                                            BorderBrush="#33FFFFFF"
+                                            BorderThickness="0.5"
+                                            Height="48"
+                                            Margin="0.4">
+                                        <TextBlock Text="{Binding Label}"
+                                                   FontSize="8"
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Center" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="2"
+                        Grid.Column="1"
+                        Margin="0,10,0,0"
+                        Background="#FFF5F7FA"
+                        BorderBrush="{StaticResource Brush.Border}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="10">
+                    <StackPanel>
+                        <TextBlock Text="Current Row Pixels" Style="{StaticResource CaptionTextStyle}" />
+                        <Border Margin="0,8,0,0" Background="#FF102A43" CornerRadius="6" Padding="4">
+                            <Image Source="{Binding PixelHeatmap}" Height="28" Stretch="Fill" />
+                        </Border>
+                        <TextBlock Text="{Binding PixelStatsSummary}" Margin="0,10,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding AfePhaseSummary}" Margin="0,6,0,0" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Grid.Row="3"
+                           Grid.ColumnSpan="2"
+                           Margin="0,10,0,0"
+                           Text="Completed rows are green, the active row is gold with VGH bias, and pending rows stay gray until scanned."
+                           Style="{StaticResource CaptionTextStyle}" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Style="{StaticResource PanelBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <DockPanel Margin="0,0,0,10">
+                    <StackPanel DockPanel.Dock="Left">
+                        <TextBlock Text="Signal Scope" Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,4" />
+                        <TextBlock Text="Mouse wheel zooms 1 us/div to 10 ms/div. Each trace uses its own physical voltage range." Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Right"
+                               Text="{Binding TimeScaleLabel}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Margin="12,0,0,0" />
+                </DockPanel>
+
+                <Grid Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <ItemsControl ItemsSource="{Binding ScopeChannels}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsVisible}" Margin="0,0,12,4" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Grid.Row="1"
+                            Margin="0,8,0,0"
+                            Background="#FF111827"
+                            BorderBrush="{StaticResource Brush.Border}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <drawing:ScopeRenderer Channels="{Binding ScopeChannels}"
+                                               TimeScaleMicrosecondsPerDivision="{Binding TimeScaleMicrosecondsPerDivision, Mode=TwoWay}" />
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -5,6 +5,11 @@ namespace FpdSimViewer.Engine;
 
 public sealed class SimulationEngine
 {
+    public const double VghDefault = 20.0;
+    public const double VglDefault = -10.0;
+    public const double VpdDefault = -1.5;
+    public const double LogicHigh = 3.3;
+
     private uint _latchedCtrlStart;
     private uint _latchedCtrlAbort;
     private uint _previousFsmState;

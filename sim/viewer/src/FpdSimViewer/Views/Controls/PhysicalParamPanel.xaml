@@ -1,0 +1,141 @@
+<UserControl x:Class="FpdSimViewer.Views.Controls.PhysicalParamPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Gate Timing" Style="{StaticResource SectionTitleStyle}" />
+                    <TextBlock Grid.Row="1"
+                               Text="{Binding MinLineMicroseconds, StringFormat=T_line minimum for current combo: {0:F1} us}"
+                               Style="{StaticResource CaptionTextStyle}" />
+
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="72" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="T_gate_on" VerticalAlignment="Center" />
+                        <Slider Grid.Column="1" Minimum="1.0" Maximum="50.0" Value="{Binding GateOnMicroseconds}" />
+                        <TextBox Grid.Column="2" Text="{Binding GateOnMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
+
+                        <TextBlock Grid.Row="1" Text="T_settle" VerticalAlignment="Center" />
+                        <Slider Grid.Row="1" Grid.Column="1" Minimum="0.0" Maximum="10.0" Value="{Binding GateSettleMicroseconds}" />
+                        <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding GateSettleMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
+
+                        <TextBlock Grid.Row="2" Text="T_line" VerticalAlignment="Center" />
+                        <Slider Grid.Row="2" Grid.Column="1" Minimum="{Binding MinLineMicroseconds}" Maximum="120.0" Value="{Binding LineMicroseconds}" />
+                        <TextBox Grid.Row="2" Grid.Column="2" Text="{Binding LineMicroseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F1}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="AFE Settings" Style="{StaticResource SectionTitleStyle}" />
+
+                    <Grid Grid.Row="1" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="72" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="IFS range" VerticalAlignment="Center" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="{Binding IfsMax}" Value="{Binding IfsRange}" />
+                        <TextBox Grid.Column="2" Text="{Binding IfsRange, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                        <CheckBox Content="CIC Enable"
+                                  IsChecked="{Binding CicEnabled}"
+                                  IsEnabled="{Binding IsCicAvailable}" />
+                        <Grid Margin="0,6,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="72" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="CIC profile" VerticalAlignment="Center" />
+                            <Slider Grid.Column="1"
+                                    Minimum="0"
+                                    Maximum="15"
+                                    Value="{Binding CicProfile}"
+                                    IsEnabled="{Binding IsCicAvailable}" />
+                            <TextBox Grid.Column="2"
+                                     Text="{Binding CicProfile, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding IsCicAvailable}" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Integration" Style="{StaticResource SectionTitleStyle}" />
+                    <Grid Grid.Row="1" Margin="0,10,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="72" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="T_integrate (ms)" VerticalAlignment="Center" />
+                        <Slider Grid.Column="1" Minimum="0.0" Maximum="160.0" Value="{Binding IntegrateMilliseconds}" />
+                        <TextBox Grid.Column="2" Text="{Binding IntegrateMilliseconds, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" />
+
+                        <TextBlock Grid.Row="1" Text="N_reset" VerticalAlignment="Center" />
+                        <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="16" Value="{Binding NResetScans}" />
+                        <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding NResetScans, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="3" Style="{StaticResource PanelBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="Power Defaults" Style="{StaticResource SectionTitleStyle}" />
+                    <TextBlock Text="{Binding VghTargetVoltage, StringFormat=VGH target: {0:F1} V}" />
+                    <TextBlock Text="{Binding VglTargetVoltage, StringFormat=VGL target: {0:F1} V}" />
+                    <TextBlock Text="Changes are applied immediately and stay synchronized with the register editor."
+                               Margin="0,8,0,0"
+                               Style="{StaticResource CaptionTextStyle}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

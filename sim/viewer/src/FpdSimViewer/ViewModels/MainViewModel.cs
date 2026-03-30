@@ -24,6 +24,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         Engine = new SimulationEngine();
         RegisterEditor = new RegisterEditorViewModel(Engine, ApplySnapshot);
+        OperationMonitor = new OperationMonitorViewModel();
+        PhysicalParameters = new PhysicalParamViewModel(Engine, ApplySnapshot);
+        DataPath = new DataPathViewModel();
+        Verification = new VerificationViewModel(Engine.TraceCapture);
         PanelScan = new PanelScanViewModel();
         FsmDiagram = new FsmDiagramViewModel();
         ImagingCycle = new ImagingCycleViewModel(Engine.TraceCapture);
@@ -36,6 +40,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public SimControlViewModel SimControl { get; }
 
     public RegisterEditorViewModel RegisterEditor { get; }
+
+    public OperationMonitorViewModel OperationMonitor { get; }
+
+    public PhysicalParamViewModel PhysicalParameters { get; }
+
+    public DataPathViewModel DataPath { get; }
+
+    public VerificationViewModel Verification { get; }
 
     public PanelScanViewModel PanelScan { get; }
 
@@ -54,6 +66,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         ElapsedTime = TimeSpan.FromSeconds(snapshot.Cycle / 100_000_000.0).ToString(@"hh\:mm\:ss\.fff");
 
         RegisterEditor.UpdateFromSnapshot(snapshot);
+        OperationMonitor.UpdateFromSnapshot(snapshot, Engine.ComboConfig);
+        PhysicalParameters.UpdateFromSnapshot(snapshot, Engine.ComboConfig);
+        DataPath.UpdateFromSnapshot(snapshot, Engine.ComboConfig);
+        Verification.UpdateFromSnapshot(snapshot, Engine.ComboConfig);
         PanelScan.UpdateFromSnapshot(snapshot, Engine.ComboConfig);
         FsmDiagram.UpdateFromSnapshot(snapshot);
         ImagingCycle.UpdateFromSnapshot(snapshot);

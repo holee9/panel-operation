@@ -1,0 +1,100 @@
+<UserControl x:Class="FpdSimViewer.Views.Tabs.HwSetupTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Hardware Selection" Style="{StaticResource SectionTitleStyle}" />
+
+                    <Grid Grid.Row="1" Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Preset" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding ComboOptions}"
+                                  SelectedItem="{Binding SelectedCombo}"
+                                  DisplayMemberPath="Label" />
+                    </Grid>
+
+                    <UniformGrid Grid.Row="2" Rows="2" Columns="2" Margin="0,12,0,0">
+                        <StackPanel Margin="0,0,12,12">
+                            <TextBlock Text="Panel" Style="{StaticResource CaptionTextStyle}" />
+                            <TextBlock Text="{Binding PanelName}" FontSize="20" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding PanelRows, StringFormat=Rows: {0:N0}}" />
+                            <TextBlock Text="{Binding PanelCols, StringFormat=Cols: {0:N0}}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,12">
+                            <TextBlock Text="Gate IC" Style="{StaticResource CaptionTextStyle}" />
+                            <TextBlock Text="{Binding GateIcName}" FontSize="20" FontWeight="SemiBold" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Text="AFE" Style="{StaticResource CaptionTextStyle}" />
+                            <TextBlock Text="{Binding AfeName}" FontSize="20" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding AfeChips, StringFormat=Chips: {0}}" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Text="Current Combo" Style="{StaticResource CaptionTextStyle}" />
+                            <TextBlock Text="{Binding CurrentComboLabel}" FontSize="20" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </UniformGrid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Operating Mode" Style="{StaticResource SectionTitleStyle}" />
+
+                    <Grid Grid.Row="1" Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Mode" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding ModeOptions}"
+                                  SelectedItem="{Binding SelectedMode}"
+                                  DisplayMemberPath="Label" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource PanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Power / Safety Summary" Style="{StaticResource SectionTitleStyle}" />
+                    <WrapPanel Grid.Row="1" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding PowerTargetMode, StringFormat=Target Mode: {0}}" Margin="0,0,16,6" />
+                        <TextBlock Text="{Binding VglStable, StringFormat=VGL Stable: {0}}" Margin="0,0,16,6" />
+                        <TextBlock Text="{Binding VghStable, StringFormat=VGH Stable: {0}}" Margin="0,0,16,6" />
+                        <TextBlock Text="{Binding FaultVghOver, StringFormat=VGH Over: {0}}" Margin="0,0,16,6" />
+                        <TextBlock Text="{Binding FaultTempOver, StringFormat=Temp Over: {0}}" Margin="0,0,16,6" />
+                    </WrapPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>
